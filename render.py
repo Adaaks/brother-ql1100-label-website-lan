@@ -412,9 +412,9 @@ def load_upload(data, filename):
 VINTED_PREFIXES = ("vinted-label", "vinted-return")   # Vinted's PDFs are laid out for A4 paper
 
 # Wording printed on Vinted's (and carriers') A4 label sheets, so they're recognised whatever the file is called.
-SHEET_STRONG = ("print this sheet on a4",)
+SHEET_STRONG = ("print this sheet on a4", "drop off at inpost")
 SHEET_HINTS = ("cut out the label", "cut-line", "cut line", "must print and attach this label",
-               "attach the label to the parcel", "attach this label to your parcel")
+               "attach the label to the parcel", "attach this label to your parcel", "inpost")
 
 
 def _is_label_sheet(page):
