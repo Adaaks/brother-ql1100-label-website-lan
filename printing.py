@@ -374,7 +374,7 @@ class Jobs:
         FED.update(mm=0)
 
         def finish():                                # the cutter takes about half a second
-            time.sleep(1.0)
+            time.sleep(0.5)
             job.update(state="done", message="Cut")
             invalidate_status()
         threading.Thread(target=finish, daemon=True).start()
