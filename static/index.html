@@ -58,36 +58,6 @@ i[data-i] { display: inline-flex; font-style: normal; }
 .top-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .pill { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line-2); background: var(--card); color: var(--text-2); font-size: 13px; white-space: nowrap; }
 .pill .muted { color: var(--muted); }
-button.pill { font: inherit; font-size: 13px; cursor: pointer; transition: border-color .15s, background .15s; }
-button.pill:hover { border-color: var(--line-3); background: var(--card-2); }
-.roll-meter { display: inline-flex; align-items: center; gap: 7px; margin-left: 2px; color: var(--text-2); font-variant-numeric: tabular-nums; }
-.rm-bar { position: relative; width: 46px; height: 6px; border-radius: 6px; background: rgba(255, 255, 255, .12); overflow: hidden; }
-.rm-bar i { position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); border-radius: 6px; background: var(--grad); transition: width .4s; }
-.roll-meter.low .rm-bar i, .rl-big.low .rm-bar i, .rm-bar.low i { background: #f5a524; }
-.roll-meter.out .rm-bar i, .rl-big.out .rm-bar i, .rm-bar.out i { background: var(--bad); }
-.roll-meter.untracked { color: var(--muted); }
-.icon-btn.roll-mbtn { display: none; }
-.rl-big { padding: 16px 18px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--card); display: grid; gap: 10px; }
-.rl-big .rm-bar { width: 100%; height: 9px; }
-.rl-big-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.rl-big-top b { font-size: 15px; }
-.rl-big-top .pct { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.rl-sub { color: var(--muted); font-size: 12.5px; }
-.rl-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
-.rl-form label { display: grid; gap: 6px; font-size: 12px; color: var(--muted); }
-.rl-in { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--card-2); color: var(--muted); font-size: 12.5px; }
-.rl-in input { width: 74px; border: 0; outline: none; background: none; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; -moz-appearance: textfield; }
-.rl-in input::-webkit-outer-spin-button, .rl-in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.rl-in:focus-within { border-color: var(--accent-line); }
-.rl-list { display: grid; gap: 8px; }
-.rl-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
-.rl-item.on { border-color: var(--accent-line); background: var(--accent-soft); }
-.rl-item .rl-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
-.rl-item .rl-txt b { font-size: 13.5px; }
-.rl-item .rm-bar { width: 70px; flex: none; }
-.rl-tag { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; }
-#rollModal .modal-body { display: grid; gap: 14px; }
-#rollModal .sect { margin-top: 8px; }
 .led { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
 .status[data-state=ready] .led { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
 .status[data-state=printing] .led { background: var(--warn); box-shadow: 0 0 10px var(--warn); animation: blink 1s infinite; }
@@ -405,7 +375,6 @@ body.dragging .drag-overlay { opacity: 1; }
   .print-btn { min-width: 0; padding: 0 22px; }
   .topbar { padding: 0 14px; }
   .pill.roll { display: none; }
-  .icon-btn.roll-mbtn { display: grid; }
   .toasts { top: 72px; left: 12px; right: 12px; align-items: stretch; }
   .toast { max-width: none; }
   .fontpop { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto !important; max-height: 72vh !important; transform-origin: bottom center; }
@@ -432,8 +401,7 @@ body.dragging .drag-overlay { opacity: 1; }
     <span>label<b>printer</b></span>
   </a>
   <div class="top-right">
-    <button class="pill roll" id="rollBtn" type="button" title="Roll tracker">Brother QL-1100 <span class="muted">·</span> <span id="rollName">checking roll…</span><span class="roll-meter" id="rollMeter" hidden><span class="rm-bar"><i></i></span><span id="rollLeft"></span></span></button>
-    <button class="icon-btn roll-mbtn" id="rollBtnM" type="button" title="Roll tracker" aria-label="Roll tracker"><i data-i="roll" data-s="19"></i></button>
+    <span class="pill roll">Brother QL-1100 <span class="muted">·</span> <span id="rollName">checking roll…</span></span>
     <span class="pill status" id="status" data-state="unknown" role="status"><span class="led"></span><span id="statusText">Connecting…</span></span>
   </div>
 </header>
@@ -655,27 +623,6 @@ body.dragging .drag-overlay { opacity: 1; }
     <div class="zoom-hint">Ctrl + scroll to zoom &middot; drag to move around &middot; double-click to zoom in or back out</div>
   </div>
 </div>
-<div class="modal" id="rollModal" aria-hidden="true">
-  <div class="modal-card" role="dialog" aria-label="Roll tracker" style="width: min(620px, 100%)">
-    <div class="modal-head"><div><h3>Roll tracker</h3><p>An estimate of the paper left on each roll, from everything printed and fed.</p></div><button class="icon-btn" data-close type="button" aria-label="Close"><i data-i="x"></i></button></div>
-    <div class="modal-body">
-      <label class="row" style="border-top: 0"><span class="row-text"><b>Track paper left</b><small>Turn off if you don't want the estimate - for example if you didn't start with a full roll</small></span><span class="switch"><input type="checkbox" id="rollsOn"><span class="track"></span></span></label>
-      <div id="rollsBody" style="display: grid; gap: 14px">
-        <div class="sect"><h3>In the printer now</h3></div>
-        <div id="rlLoaded"></div>
-        <div class="sect"><h3 id="rlAddTitle">Put in a new roll</h3></div>
-        <div class="rl-form">
-          <label>Roll length<span class="rl-in"><input id="rlTotal" type="number" inputmode="decimal" min="0" step="any"><span class="rl-unit">m</span></span></label>
-          <label>Left on it<span class="rl-in"><input id="rlLeft" type="number" inputmode="decimal" min="0" step="any" placeholder="full"><span class="rl-unit">m</span></span></label>
-          <button class="btn primary" id="rlAdd" type="button"><i data-i="plus" data-s="15"></i><span id="rlAddTxt">Add roll</span></button>
-        </div>
-        <p class="sect-note" id="rlHint" style="margin: 0"></p>
-        <div class="sect"><h3>All rolls</h3></div>
-        <div class="rl-list" id="rlList"></div>
-      </div>
-    </div>
-  </div>
-</div>
 <div class="modal" id="cropModal" aria-hidden="true">
   <div class="modal-card" role="dialog" aria-label="Crop">
     <div class="modal-head"><div><h3>Crop to your label</h3><p>Drag a box around the part of the page you want to print. It applies to every page.</p></div><button class="icon-btn" data-close type="button" aria-label="Close"><i data-i="x"></i></button></div>
@@ -724,7 +671,6 @@ const P = {
   up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/>',
-  roll: '<circle cx="9" cy="12" r="6"/><circle cx="9" cy="12" r="2"/><path d="M9 6h10v12H9"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
@@ -1308,7 +1254,7 @@ async function runJob(send, pages, copies, n, animFn) {
 let animTok = 0;
 const stopAnim = () => { animTok++; };
 // Print timings measured on the QL-1100 with a stopwatch, per quality mode: printing starts `startS` after pressing
-// Print (the printer receiving the job), then the "Welcome" label (25.5 mm) takes `welcomeS` to print and a 4x6"
+// Print (the printer receiving the job), then the "Welcome" label (25 mm) takes `welcomeS` to print and a 4x6"
 // postage label (152.4 mm) takes `postageS`; other lengths fall on the line between. The cut follows straight away.
 const timing = (startS, welcomeS, postageS) => {
   const mmPerS = (152.4 - 25) / (postageS - welcomeS);
@@ -1644,7 +1590,7 @@ function applyStatus(s) {
   $("#rig").classList.toggle("no-media", s.problem === "no_media" || s.problem === "media_end");
   if (typeof s.fed_mm === "number" && !printing && !animating && Math.abs(s.fed_mm - FED) > 0.05) setFed(s.fed_mm, 300);
   const roll = s.problem === "no_media" ? "no roll loaded" : MEDIA.name + (s.detected ? "" : " (last used)");
-  $("#rollName").textContent = roll; $("#rollMobile").textContent = roll + renderRollMeter(s.roll);
+  $("#rollName").textContent = roll; $("#rollMobile").textContent = roll;
   $("#alert").hidden = !s.blocking;
   if (s.blocking) $("#alert").innerHTML = ic("alert", 15) + `<span><b>${esc(s.message)}</b>${PROBLEM_HINT[s.problem] ? " · " + esc(PROBLEM_HINT[s.problem]) : ""}</span>`;
   if (MEDIA.id !== prev) applyMedia(mediaKnown);
@@ -1663,86 +1609,6 @@ function applyMedia(rollChanged) {
     if (S.tab === "history") loadHistory();
   }
 }
-// ------------------------------------------------------------------ roll tracker
-const fmtAmt = (v, u) => u === "m" ? (v >= 10 ? v.toFixed(1) : v.toFixed(2)) + " m" : Math.round(v) + " labels";
-const fmtTotal = (v, u) => u === "m" ? +v.toFixed(2) + " m" : Math.round(v) + " labels";
-const lowCls = pct => pct <= 3 ? "out" : pct <= 10 ? "low" : "";
-function renderRollMeter(r) {                     // the bar in the roll pill; returns text for the phone layout
-  const m = $("#rollMeter");
-  m.hidden = !r;
-  if (!r) return "";
-  m.className = "roll-meter " + (r.tracked ? lowCls(r.pct) : "untracked");
-  $(".rm-bar", m).hidden = !r.tracked;
-  if (!r.tracked) { $("#rollLeft").textContent = "track paper"; return ""; }
-  $(".rm-bar i", m).style.setProperty("--p", r.pct + "%");
-  $("#rollLeft").textContent = `${Math.round(r.pct)}% · ${fmtAmt(r.left, r.unit)}`;
-  return ` · ${Math.round(r.pct)}% left`;
-}
-let ROLLS_STATE = null;
-async function loadRolls(change) {
-  try {
-    const r = change ? await fetch("/api/rolls", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(change) })
-                     : await fetch("/api/rolls", { cache: "no-store" });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error || "Couldn't save that");
-    ROLLS_STATE = j; renderRolls();
-    if (change) pollStatus();
-    return true;
-  } catch (e) { toast("bad", "Roll tracker", e.message); return false; }
-}
-function renderRolls() {
-  const st = ROLLS_STATE; if (!st) return;
-  const u = st.unit, cur = st.rolls.find(r => r.id === st.loaded);
-  $("#rollsOn").checked = st.enabled;
-  $("#rollsBody").style.display = st.enabled ? "grid" : "none";
-  $$("#rollModal .rl-unit").forEach(e => { e.textContent = u; });
-  $("#rlLoaded").innerHTML = cur
-    ? `<div class="rl-big ${lowCls(cur.pct)}">
-        <div class="rl-big-top"><b>Roll #${cur.id} · ${esc(cur.name)}</b><span class="pct">${Math.round(cur.pct)}%</span></div>
-        <div class="rm-bar"><i style="--p:${cur.pct}%"></i></div>
-        <div class="rl-big-top" style="align-items: center; flex-wrap: wrap"><span class="rl-sub">${fmtAmt(cur.left, u)} left of ${fmtTotal(cur.total, u)}</span>
-          <span class="rl-form" style="gap: 8px"><span class="rl-in"><input id="rlFix" type="number" inputmode="decimal" min="0" step="any" value="${cur.left}"><span>${u}</span></span><button class="btn sm" id="rlFixBtn" type="button">Correct</button></span></div>
-      </div>`
-    : `<div class="rl-big"><span class="rl-sub">No roll is set up for the ${esc(st.media_name)} yet. Add it below and the tracker counts down as you print and feed.</span></div>`;
-  $("#rlAddTitle").textContent = cur ? "Put in a new roll" : "Set up this roll";
-  $("#rlAddTxt").textContent = `Add roll #${st.next_id}`;
-  const tot = $("#rlTotal");
-  if (tot.dataset.media !== st.media) { tot.value = st.default_total ?? ""; tot.dataset.media = st.media; $("#rlLeft").value = ""; }
-  $("#rlHint").textContent = st.media === "102"
-    ? "Genuine Brother DK-22243 rolls are 15.24 m; many compatible rolls are 30.48 m (100 ft) - check the box. Leave \"Left on it\" empty for a full roll."
-    : u === "m" ? "Brother's own rolls of this width are 30.48 m - check the box if yours is different. Leave \"Left on it\" empty for a full roll."
-    : "Filled in with the number of labels on Brother's own roll of this size - check the box if yours is different.";
-  $("#rlList").innerHTML = st.rolls.map(r => {
-    const loaded = st.loaded_ids.includes(r.id);
-    return `<div class="rl-item ${r.id === st.loaded ? "on" : ""}">
-      <div class="rl-txt"><b>#${r.id} · ${esc(r.name)}</b><span class="rl-sub">${fmtAmt(r.left, r.unit)} left of ${fmtTotal(r.total, r.unit)}${r.last_used ? " · used " + ago(r.last_used) : ""}</span></div>
-      <div class="rm-bar ${lowCls(r.pct)}"><i style="--p:${r.pct}%"></i></div>
-      ${loaded ? `<span class="rl-tag">Loaded</span>` : `<button class="btn sm" type="button" data-load="${r.id}" title="This is the roll in the printer">Load</button>`}
-      <button class="icon-btn danger" type="button" data-del="${r.id}" title="Delete roll #${r.id}">${ic("trash", 15)}</button>
-    </div>`;
-  }).join("") || `<span class="rl-sub">No rolls yet.</span>`;
-}
-const openRolls = () => { openModal("rollModal"); loadRolls(); };
-$("#rollBtn").addEventListener("click", openRolls);
-$("#rollBtnM").addEventListener("click", openRolls);
-$("#rollsOn").addEventListener("change", e => loadRolls({ enabled: e.target.checked }));
-$("#rlAdd").addEventListener("click", async () => {
-  const total = parseFloat($("#rlTotal").value), left = $("#rlLeft").value.trim();
-  if (!(total > 0)) { toast("bad", "Roll tracker", "Enter the roll's length first."); return; }
-  if (await loadRolls({ add: { total, left: left === "" ? null : parseFloat(left) } })) {
-    $("#rlLeft").value = "";
-    toast("ok", `Roll #${ROLLS_STATE.loaded} set up`, "The tracker now counts down as you print and feed.");
-  }
-});
-$("#rlLoaded").addEventListener("click", e => {
-  if (e.target.closest("#rlFixBtn")) loadRolls({ id: ROLLS_STATE.loaded, left: parseFloat($("#rlFix").value) });
-});
-$("#rlList").addEventListener("click", e => {
-  const ld = e.target.closest("[data-load]"), del = e.target.closest("[data-del]");
-  if (ld) loadRolls({ load: +ld.dataset.load });
-  if (del && confirm(`Delete roll #${del.dataset.del}? Its usage count is lost.`)) loadRolls({ delete: +del.dataset.del });
-});
-
 async function pollStatus() {
   try { applyStatus(await (await fetch("/api/status", { cache: "no-store" })).json()); }
   catch { applyStatus({ ...STATUS, state: "error", message: "Server unreachable", problem: null, blocking: false }); }

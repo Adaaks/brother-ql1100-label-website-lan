@@ -19,7 +19,6 @@ from brother_ql.raster import BrotherQLRaster
 from PIL import Image, ImageOps
 
 import media as M
-from rolls import ROLLS
 
 PRINTER = "Brother QL-1100"
 MODEL = "QL-1100"
@@ -408,7 +407,6 @@ class Jobs:
             job.update(state="error", message=f"Couldn't feed: {e}")
             return job
         FED.update(mm=0 if cut else FED["mm"] + mm)
-        ROLLS.use(media, [mm])                       # blank tape off the roll
 
         def finish():                                # ~110 mm/s, plus the cut if there is one
             time.sleep(mm / 110 + (0.5 if cut else 0.2))
@@ -419,13 +417,8 @@ class Jobs:
 
     def submit(self, images, media, title, cut=True, best=False):
         data = build_raster(images, media, cut, best)
-        lengths = [media.geometry(im.height)["length_mm"] for im in images]
-        fed = 0 if cut else FED["mm"] + sum(lengths)
-
-        def sent():
-            FED.update(mm=fed)
-            ROLLS.use(media, lengths)                # paper off the roll (roll tracker)
-        job = self._send(data, title, len(images), on_sent=sent)
+        fed = 0 if cut else FED["mm"] + sum(media.geometry(im.height)["length_mm"] for im in images)
+        job = self._send(data, title, len(images), on_sent=lambda: FED.update(mm=fed))
         if job["state"] != "error":
             log.info("job %s: %d label(s) on %s, %s, %d bytes", job["id"], len(images), media.id, "best" if best else "fast", len(data))
         return job
