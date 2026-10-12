@@ -415,7 +415,7 @@ class Jobs:
         threading.Thread(target=finish, daemon=True).start()
         return job
 
-    def submit(self, images, media, title, cut=True, best=True):
+    def submit(self, images, media, title, cut=True, best=False):
         data = build_raster(images, media, cut, best)
         fed = 0 if cut else FED["mm"] + sum(media.geometry(im.height)["length_mm"] for im in images)
         job = self._send(data, title, len(images), on_sent=lambda: FED.update(mm=fed))

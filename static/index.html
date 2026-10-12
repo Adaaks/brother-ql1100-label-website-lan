@@ -596,8 +596,8 @@ body.dragging .drag-overlay { opacity: 1; }
       </div>
       <div class="copies quality"><span class="lbl">Quality</span>
         <div class="seg" id="quality">
-          <button type="button" data-v="best" title="Give priority to print quality (the default)">Best</button>
-          <button type="button" data-v="fast" title="Give priority to print speed - prints noticeably quicker">Fast</button>
+          <button type="button" data-v="fast" title="Give priority to print speed (the default)">Fast</button>
+          <button type="button" data-v="best" title="Give priority to print quality - slower">Best</button>
         </div>
       </div>
       <span class="usage" id="usage"></span>
@@ -702,7 +702,7 @@ const S = {
   text: DEF_TEXT(),                                   // text starts fresh each visit
   file: Object.assign(DEF_FILE(), { id: null, name: "", pages: 0, auto: null, exclude: [], crop: null }),   // upload settings start fresh each visit
   copies: 1,
-  quality: "best",          // "best" (default) or "fast", like P-touch's print quality setting
+  quality: "fast",          // "fast" (default) or "best", like P-touch's print quality setting
 };
 if (!["text", "file", "history"].includes(S.tab)) S.tab = "text";
 if (!Array.isArray(S.text.blocks) || !S.text.blocks.length) S.text.blocks = DEF_TEXT().blocks;
