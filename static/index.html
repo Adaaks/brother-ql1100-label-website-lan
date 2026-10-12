@@ -835,17 +835,11 @@ function renderBlocks() {
     ta.value = b.text;
     sizeIn.value = b.size;
     styleTa(); syncStyle();
-    // the starter "Welcome" disappears the moment you start typing (once), so you never have to delete it
-    ta.addEventListener("beforeinput", e => {
+    // the starter "Welcome" clears the first time you click into the box - only that once
+    ta.addEventListener("focus", () => {
       if (!b.starter) return;
       b.starter = false;
-      if (e.inputType === "insertText" || e.inputType.startsWith("delete")) {
-        e.preventDefault();                     // typed letter replaces it; backspace just clears it
-        ta.value = e.inputType === "insertText" ? (e.data || "") : "";
-        ta.dispatchEvent(new Event("input"));
-      } else if (e.inputType.startsWith("insert")) {
-        ta.value = "";                          // paste, Enter...: clear first, then let it happen
-      }
+      ta.value = ""; b.text = ""; changed();
     });
     ta.addEventListener("input", () => { b.text = ta.value; b.starter = false; changed(); });
     ta.addEventListener("keydown", e => {
