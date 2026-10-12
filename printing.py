@@ -213,6 +213,27 @@ class PrinterLink:
             finally:
                 _k32.CloseHandle(handle)
 
+    def write(self, data):
+        """Sends a short command straight to the printer, bypassing the print queue (and Brother's
+        language monitor, which can leave a job that prints nothing - like a cut - stuck "printing")."""
+        with self.lock:
+            if spooler_jobs():
+                raise RuntimeError("the printer is busy printing")
+            handle = None
+            for path in self._paths():
+                h = _k32.CreateFileW(path, 0x80000000 | 0x40000000, 1 | 2, None, 3, 0x40000000, None)
+                if h not in (None, INVALID_HANDLE):
+                    handle = h
+                    break
+            if handle is None:
+                raise RuntimeError("the printer is off or unplugged")
+            try:
+                buf = ctypes.create_string_buffer(data, len(data))
+                if self._io(handle, _k32.WriteFile, buf, len(data), 5000) != len(data):
+                    raise RuntimeError("the printer didn't accept the command")
+            finally:
+                _k32.CloseHandle(handle)
+
 
 LINK = PrinterLink()
 
@@ -337,8 +358,27 @@ class Jobs:
         self._lock = threading.Lock()
 
     def cut(self):
-        """Cuts the tape where it is (e.g. blank paper fed with the Feed button)."""
-        return self._send(CUT_NOW, "labelprinter cut", 0, on_sent=lambda: FED.update(mm=0))
+        """Cuts the tape where it is (e.g. blank paper fed with the Feed button). Sent straight over USB:
+        through the print queue a cut could hang there as "printing" and block the next job."""
+        jid = next(self._ids)
+        ACTIVITY["what"] = "Cutting"
+        job = {"id": jid, "state": "printing", "message": "Cutting...", "labels": 0, "created": time.time(), "spool_id": None}
+        with self._lock:
+            self._jobs[jid] = job
+        try:
+            LINK.write(CUT_NOW)
+        except Exception as e:
+            log.warning("cut failed: %s", e)
+            job.update(state="error", message=f"Couldn't cut: {e}")
+            return job
+        FED.update(mm=0)
+
+        def finish():                                # the cutter takes about half a second
+            time.sleep(1.0)
+            job.update(state="done", message="Cut")
+            invalidate_status()
+        threading.Thread(target=finish, daemon=True).start()
+        return job
 
     def submit(self, images, media, title, cut=True):
         data = build_raster(images, media, cut)
