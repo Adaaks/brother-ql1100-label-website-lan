@@ -24,28 +24,28 @@
 
 <table>
   <tr>
+    <th width="50%">Shipping label upload</th>
+    <th width="50%">Print animation</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/upload.png" alt="Shipping label upload"></td>
+    <td valign="top"><img src="docs/screenshots/printing.png" alt="Print animation"></td>
+  </tr>
+  <tr>
+    <th width="50%">Printer problems are shown live</th>
+    <th width="50%">History</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/alert.png" alt="Printer problems are shown live"></td>
+    <td valign="top"><img src="docs/screenshots/history.png" alt="History"></td>
+  </tr>
+  <tr>
     <th width="50%">Text printing</th>
     <th width="50%">On a phone</th>
   </tr>
   <tr>
-    <td valign="top"><img src="docs/screenshots/text.png" alt="Text printing editor"></td>
-    <td valign="top"><img src="docs/screenshots/mobile.png" alt="Phone layout"></td>
-  </tr>
-  <tr>
-    <th>Shipping label upload</th>
-    <th>Printer problems are shown live</th>
-  </tr>
-  <tr>
-    <td valign="top"><img src="docs/screenshots/upload.png" alt="Shipping label upload"></td>
-    <td valign="top"><img src="docs/screenshots/alert.png" alt="Lid open alert"></td>
-  </tr>
-  <tr>
-    <th>Print animation</th>
-    <th>History</th>
-  </tr>
-  <tr>
-    <td valign="top"><img src="docs/screenshots/printing.png" alt="Label feeding out of the printer"></td>
-    <td valign="top"><img src="docs/screenshots/history.png" alt="Print history"></td>
+    <td valign="top"><img src="docs/screenshots/text.png" alt="Text printing"></td>
+    <td valign="top"><img src="docs/screenshots/mobile.png" alt="On a phone"></td>
   </tr>
 </table>
 
