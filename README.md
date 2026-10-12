@@ -20,13 +20,34 @@
 - **Works on phones.** The layout is responsive and dark-themed.
 - **Light on resources.** It uses about 70 MB of RAM, ~0% CPU when idle and about 0.1% while someone has the page open. It starts with Windows and restarts itself if it ever crashes.
 
-| Print animation | Shipping label upload | History |
-|---|---|---|
-| ![Printing](docs/screenshots/printing.png) | ![Shipping label](docs/screenshots/upload.png) | ![History](docs/screenshots/history.png) |
+## Screenshots
 
-| Font picker | Printer problems | Phone |
-|---|---|---|
-| ![Fonts](docs/screenshots/fonts.png) | ![Alert](docs/screenshots/alert.png) | ![Mobile](docs/screenshots/mobile.png) |
+<table>
+  <tr>
+    <th width="50%">Text printing</th>
+    <th width="50%">On a phone</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/text.png" alt="Text printing editor"></td>
+    <td valign="top"><img src="docs/screenshots/mobile.png" alt="Phone layout"></td>
+  </tr>
+  <tr>
+    <th>Shipping label upload</th>
+    <th>Printer problems are shown live</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/upload.png" alt="Shipping label upload"></td>
+    <td valign="top"><img src="docs/screenshots/alert.png" alt="Lid open alert"></td>
+  </tr>
+  <tr>
+    <th>Print animation</th>
+    <th>History</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/printing.png" alt="Label feeding out of the printer"></td>
+    <td valign="top"><img src="docs/screenshots/history.png" alt="Print history"></td>
+  </tr>
+</table>
 
 ## Requirements
 
