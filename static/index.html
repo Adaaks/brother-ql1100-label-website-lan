@@ -1262,7 +1262,7 @@ const timing = (startS, welcomeS, postageS) => {
 };
 const PRINT_TIMES = {
   best: timing(1.5, 2, 7),
-  fast: timing(1.5, 2, 7),          // not measured yet - same as Best for now
+  fast: timing(1.5, 1.71, 4.62),    // ~44 mm/s once printing, vs ~25 mm/s in Best
 };
 async function playPrint(pages, copies, done = Promise.resolve(true)) {
   if (reduceMotion || !pages.length) return;
