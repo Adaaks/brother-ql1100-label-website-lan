@@ -22,6 +22,7 @@ from PIL import Image
 import media as M
 import render
 from printing import Jobs, current_media, printer_status
+from rolls import ROLLS
 from render import EmptyDesign, RenderError
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -252,7 +253,40 @@ def info():
 
 @app.get("/api/status")
 def status():
-    return jsonify(printer_status())
+    s = printer_status()
+    s["roll"] = ROLLS.summary(current_media())
+    return jsonify(s)
+
+
+# ---------------------------------------------------------------- roll tracker
+@app.get("/api/rolls")
+def rolls_state():
+    return jsonify(ROLLS.state(current_media()))
+
+
+@app.post("/api/rolls")
+def rolls_change():
+    """{enabled} turns tracking on/off; {add: {total, left?}} sets up a new roll of the loaded size;
+    {load: id} marks a roll as the one in the printer; {id, left} corrects how much is left; {delete: id}."""
+    p = request.get_json(force=True, silent=True) or {}
+    try:
+        if "enabled" in p:
+            ROLLS.set_enabled(p["enabled"])
+        if "add" in p:
+            a = p["add"] or {}
+            rid = ROLLS.add(current_media(), a.get("total"), a.get("left"))
+            log.info("roll #%s added (%s) from %s", rid, current_media().id, request.remote_addr)
+        if "load" in p:
+            ROLLS.load(int(p["load"]))
+        if "left" in p and "id" in p:
+            ROLLS.set_left(int(p["id"]), p["left"])
+        if "delete" in p:
+            ROLLS.delete(int(p["delete"]))
+    except KeyError:
+        return _err("That roll doesn't exist any more.", 404)
+    except (TypeError, ValueError) as e:
+        return _err(str(e) if isinstance(e, ValueError) and str(e).startswith("Enter") else "Enter a number.")
+    return jsonify(ROLLS.state(current_media()))
 
 
 @app.get("/api/font-sample")

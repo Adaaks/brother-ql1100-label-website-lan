@@ -285,7 +285,7 @@ def render_text(spec, media):
     if media.continuous:
         min_lines = media.min_lines
         fixed = float(spec.get("length_mm") or 0)
-        fixed_lines = max(min_lines, dots(fixed) - 2 * FEED_MARGIN) if fixed > 0 else 0
+        fixed_lines = max(min_lines, dots(fixed + M.LEN_FIX) - 2 * FEED_MARGIN) if fixed > 0 else 0
     else:                                        # die-cut: the label's print length is fixed
         min_lines, fixed, fixed_lines = 0, 0, media.print_l
 
@@ -339,8 +339,8 @@ def render_text(spec, media):
     # place on the label canvas (pre-rotation: width = across for horizontal, along for vertical)
     natural = (img.width if vertical else img.height) + 2 * pad_end
     length = fixed_lines or max(min_lines, natural)
-    if fixed > 0 and dots(fixed) - 2 * FEED_MARGIN < min_lines:
-        warnings.append(f"Minimum label length is {to_mm(min_lines + 2 * FEED_MARGIN)} mm.")
+    if fixed > 0 and dots(fixed + M.LEN_FIX) - 2 * FEED_MARGIN < min_lines:
+        warnings.append(f"Minimum label length is {round(to_mm(min_lines + 2 * FEED_MARGIN) - M.LEN_FIX, 1)} mm.")
     canvas_w, canvas_h = (length, pw) if vertical else (pw, length)
     canvas = Image.new("L", (canvas_w, canvas_h), 255)
     x = (canvas_w - img.width) // 2 if vertical else pad

@@ -9,6 +9,7 @@ DPI = 300
 HEAD_PINS = 1296
 FEED = 35                    # continuous tape: blank feed at each end of a label (3 mm, the minimum)
 MIN_TOTAL = 301              # continuous tape: shortest label, feed included (25.4 mm)
+LEN_FIX = 0.5                # mm: measured continuous labels come out this much shorter than lines + 2 x FEED
 
 
 def mm(dots):
@@ -60,7 +61,7 @@ class Media:
         if self.continuous:
             paper = (self.total_w, lines + 2 * FEED)
             area = (side, FEED, self.print_w, lines)
-            length = mm(lines + 2 * FEED)
+            length = mm(lines + 2 * FEED) - LEN_FIX
         else:
             paper = (self.total_w, self.total_l)
             area = (side, (self.total_l - self.print_l) / 2, self.print_w, self.print_l)
@@ -68,7 +69,11 @@ class Media:
         w, l = self.nominal
         label = (f"{w} × {round(length, 1)} mm" if self.continuous else
                  f"{w} mm round label" if self.kind == "round" else f"{w} × {l} mm label")
-        return {"paper": [mm(v) for v in paper], "area": [mm(v) for v in area],
+        paper, area = [mm(v) for v in paper], [mm(v) for v in area]
+        if self.continuous:                      # the real feed margins are a little smaller (see LEN_FIX)
+            paper[1] = round(paper[1] - LEN_FIX, 2)
+            area[1] = round(area[1] - LEN_FIX / 2, 2)
+        return {"paper": paper, "area": area,
                 "shape": {"continuous": "rect", "die-cut": "die", "round": "round"}[self.kind],
                 "length_mm": round(length, 1), "label": label}
 
@@ -76,7 +81,7 @@ class Media:
         w, l = self.nominal
         return {"id": self.id, "kind": self.kind, "name": self.name, "width_mm": w, "length_mm": l,
                 "paper_w_mm": mm(self.total_w), "print_w_mm": mm(self.print_w),
-                "min_length_mm": round(mm(MIN_TOTAL), 1) if self.continuous else l}
+                "min_length_mm": round(mm(MIN_TOTAL) - LEN_FIX, 1) if self.continuous else l}
 
 
 _ALL = [

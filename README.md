@@ -16,6 +16,7 @@
 - **Detects the loaded roll.** It reads the printer directly over USB, so the whole site adapts to whatever DK roll is in: 12–103 mm continuous, die-cut (for example 102×152 or 62×29) and round labels.
 - **Live printer status.** It shows when there are no labels, the lid is open, the roll ran out, there's a cutter jam, or the printer is off. Printing is blocked with a clear message instead of failing silently.
 - **History.** Your last 100 prints, with true-size thumbnails, a zoomable close-up, and one-click print again or edit.
+- **Roll tracker.** Click the roll name at the top to set up a roll (each gets a number) and see an estimate of the paper left - percentage and metres, or labels for die-cut rolls. Prints, reprints and fed tape all count. Swap between rolls of different sizes and each keeps its own count; turn it off any time.
 - **Print animation.** The label feeds out of a drawn QL-1100 at the printer's real speed.
 - **Working Feed and Cut buttons.** Click the Feed and Cut buttons on the drawn printer and they act exactly like the buttons on the real QL-1100. **Feed** pushes blank tape out without cutting (handy after loading a new roll), and you can watch it hang out of the printer. **Cut** cuts instantly with the printer's own cutter, with no printing and no wasted tape. Nothing extra is needed, because these commands are built into the printer.
 - **Works on phones.** The layout is responsive and dark-themed.
