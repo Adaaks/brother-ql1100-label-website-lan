@@ -258,7 +258,7 @@ textarea.text::placeholder { color: var(--dim); }
 /* the label hangs out of the exit slot: feed's top edge sits on the slot line (y=282 of 500) */
 .feed { position: relative; z-index: 2; width: 60%; margin: -34.0625% auto 0; clip-path: inset(0 -70% -100000px -70%); }
 .feed::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18px; z-index: 5; pointer-events: none; background: linear-gradient(rgba(0, 0, 0, .62), rgba(0, 0, 0, 0)); }
-.strip { position: relative; transition: opacity .25s; }
+.strip { position: relative; }
 .feed.has-fed .strip { opacity: 0; pointer-events: none; }      /* only the blank fed paper is out */
 .fedstrip { position: relative; width: 100%; height: 0; background: #fff; box-shadow: 0 2px 0 rgba(0, 0, 0, .06) inset; }
 .fedstrip.grow { box-shadow: none; }
@@ -1249,9 +1249,8 @@ async function playPrint(pages, copies) {
   animating = true;
   rig.classList.add("printing");
   try {
-    if (stripState === "shown") await (FED > 0      // paper is hanging out: fade the preview rather than pull it through the strip
-      ? strip.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: "forwards" })
-      : strip.animate([{ transform: "translateY(0)" }, { transform: "translateY(-102%)" }], { duration: 360, easing: "cubic-bezier(.55,0,.8,.3)", fill: "forwards" })).finished;
+    if (stripState === "shown" && FED === 0)         // (while paper hangs the preview is already hidden)
+      await strip.animate([{ transform: "translateY(0)" }, { transform: "translateY(-102%)" }], { duration: 360, easing: "cubic-bezier(.55,0,.8,.3)", fill: "forwards" }).finished;
     strip.style.visibility = "hidden";
     for (let c = 0; c < Math.min(copies, 3) && alive(); c++) {
       const out = document.createElement("div");
@@ -1307,12 +1306,20 @@ function setFed(mm, ms = 0) {
   el.style.transition = ms ? `height ${ms}ms linear` : "none";
   el.style.height = FED * scale() + "px";
 }
-async function feedOut(mm) {                     // Feed button: the strip grows out of the slot at ~110 mm/s
+async function feedOut(mm) {                     // Feed button: blank paper comes out of the slot at ~110 mm/s
   if (reduceMotion) return setFed(FED + mm);
-  const rig = $("#rig"), ms = clamp(mm / 110 * 1000, 600, 4000);
-  rig.classList.add("printing", "feeding");
-  setFed(FED + mm, ms);
-  await sleep(ms);
+  const rig = $("#rig"), strip = $("#strip"), el = $("#fedStrip"), s = scale();
+  const from = FED, ms = clamp(mm / 110 * 1000, 700, 4000);
+  rig.classList.add("printing");
+  if (from === 0 && stripState === "shown") {      // the label preview slides back in first
+    await strip.animate([{ transform: "translateY(0)" }, { transform: "translateY(-102%)" }],
+      { duration: 320, easing: "cubic-bezier(.55,0,.8,.3)", fill: "forwards" }).finished;
+  }
+  setFed(from + mm);                                // final state (hides the preview)...
+  strip.getAnimations().forEach(a => a.cancel());
+  rig.classList.add("feeding");
+  await el.animate([{ height: from * s + "px" }, { height: (from + mm) * s + "px" }],   // ...reached by feeding out
+    { duration: ms, easing: "linear" }).finished;
   rig.classList.remove("printing", "feeding");
 }
 const BLANK = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="#fff"/></svg>');
