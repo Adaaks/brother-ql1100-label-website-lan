@@ -329,6 +329,22 @@ def do_print():
     return jsonify(_public(job))
 
 
+@app.post("/api/feed")
+def feed():
+    """The QL-1100 has no feed/cut command over USB, so print one blank label instead: the shortest
+    strip on continuous rolls, or exactly one label on die-cut rolls. ?cut=1 cuts after it (the printer
+    can only cut at the end of something it prints), otherwise the tape stays uncut."""
+    problem = _printer_problem()
+    if problem:
+        return problem
+    media = current_media()
+    length = media.min_lines if media.continuous else media.print_l
+    cut = request.args.get("cut") == "1"
+    job = jobs.submit([Image.new("L", (media.print_w, length), 255)], media, "labelprinter " + ("cut" if cut else "feed"), cut=cut)
+    log.info("%s (%s) from %s", "cut" if cut else "feed", media.id, request.remote_addr)
+    return jsonify(_public(job))
+
+
 @app.get("/api/jobs/<int:jid>")
 def job_status(jid):
     job = jobs.get(jid)

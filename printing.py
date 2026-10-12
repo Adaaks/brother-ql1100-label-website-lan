@@ -28,8 +28,8 @@ MEDIA_FILE = os.path.join(BASE, "media.json")
 log = logging.getLogger("labelprinter")
 
 
-def build_raster(images, media):
-    """Brother raster data for `images` (already sized for `media`). Every label is cut."""
+def build_raster(images, media, cut=True):
+    """Brother raster data for `images` (already sized for `media`). Every label is cut unless cut=False."""
     qlr = BrotherQLRaster(MODEL)
     qlr.exception_on_warning = True
     qlr.add_switch_mode()
@@ -49,10 +49,11 @@ def build_raster(images, media):
         qlr.mlength = 0 if media.continuous else media.status_l
         qlr.pquality = 1
         qlr.add_media_and_quality(im.height)
-        qlr.add_autocut(True)
-        qlr.add_cut_every(1)
+        qlr.add_autocut(cut)
+        if cut:
+            qlr.add_cut_every(1)
         qlr.dpi_600 = False
-        qlr.cut_at_end = True
+        qlr.cut_at_end = cut
         qlr.two_color_printing = False
         qlr.add_expanded_mode()
         qlr.add_margins(M.FEED if media.continuous else 0)
@@ -320,8 +321,8 @@ class Jobs:
         self._ids = itertools.count(1)
         self._lock = threading.Lock()
 
-    def submit(self, images, media, title):
-        data = build_raster(images, media)
+    def submit(self, images, media, title, cut=True):
+        data = build_raster(images, media, cut)
         jid = next(self._ids)
         job = {"id": jid, "state": "sending", "message": "Sending to printer...",
                "labels": len(images), "created": time.time(), "spool_id": None}

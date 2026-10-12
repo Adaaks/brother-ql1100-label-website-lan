@@ -244,6 +244,12 @@ textarea.text::placeholder { color: var(--dim); }
 .rig.printing .printer-box { animation: hum .1s linear infinite; }
 @keyframes hum { 25% { transform: translate(.5px, -.3px); } 50% { transform: translate(0, .35px); } 75% { transform: translate(-.5px, 0); } }
 .p-led { fill: #2a2e37; transition: fill .3s; }
+.p-btn { cursor: pointer; }
+.p-btn rect { transition: stroke .15s, filter .15s; }
+.p-btn:hover rect { stroke: #8b7bff; filter: brightness(1.35); }
+.p-btn.armed rect { stroke: #ffb43a; stroke-width: 2; }
+.p-btn:active { opacity: .8; }
+.p-hint { position: absolute; left: 50%; top: 35%; z-index: 4; transform: translate(-50%, -100%); padding: 7px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 600; white-space: nowrap; color: #fff; background: rgba(20, 22, 31, .95); border: 1px solid var(--line-3); box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .8); pointer-events: none; animation: paneIn .2s ease both; }
 .p-led-glow { fill: transparent; transition: fill .3s; }
 .rig[data-state=ready] .p-led, .rig[data-state=ready] .p-led-glow { fill: #3ee08f; }
 .rig[data-state=error] .p-led, .rig[data-state=error] .p-led-glow { fill: #ff5b5b; animation: blink 1.2s infinite; }
@@ -554,8 +560,8 @@ body.dragging .drag-overlay { opacity: 1; }
             <circle cx="410" cy="209" r="2.8" fill="#24272e"/>
             <!-- buttons: power, feed, cut, Editor Lite -->
             <g transform="translate(230 233)"><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><path d="M-3.6 -3.8 A6 6 0 1 0 3.6 -3.8" fill="none" stroke="#e9ebef" stroke-width="1.7" stroke-linecap="round"/><path d="M0 -6.6 V-0.6" stroke="#e9ebef" stroke-width="1.7" stroke-linecap="round"/></g>
-            <g transform="translate(290 233)"><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><path d="M-6 -6 V4 M-8.6 1.6 L-6 4.4 L-3.4 1.6" stroke="#e9ebef" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.5 -6 H5.5 L8 -3.5 V6 H-0.5 Z" fill="none" stroke="#e9ebef" stroke-width="1.4" stroke-linejoin="round"/></g>
-            <g transform="translate(350 233)"><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><circle cx="-5" cy="-3.6" r="2.4" fill="none" stroke="#e9ebef" stroke-width="1.4"/><circle cx="-5" cy="3.6" r="2.4" fill="none" stroke="#e9ebef" stroke-width="1.4"/><path d="M-3 -2.2 L7 4.4 M-3 2.2 L7 -4.4" stroke="#e9ebef" stroke-width="1.4" stroke-linecap="round"/></g>
+            <g class="p-btn" id="btnFeed" transform="translate(290 233)"><title>Feed (no cut)</title><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><path d="M-6 -6 V4 M-8.6 1.6 L-6 4.4 L-3.4 1.6" stroke="#e9ebef" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.5 -6 H5.5 L8 -3.5 V6 H-0.5 Z" fill="none" stroke="#e9ebef" stroke-width="1.4" stroke-linejoin="round"/></g>
+            <g class="p-btn" id="btnCut" transform="translate(350 233)"><title>Cut</title><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><circle cx="-5" cy="-3.6" r="2.4" fill="none" stroke="#e9ebef" stroke-width="1.4"/><circle cx="-5" cy="3.6" r="2.4" fill="none" stroke="#e9ebef" stroke-width="1.4"/><path d="M-3 -2.2 L7 4.4 M-3 2.2 L7 -4.4" stroke="#e9ebef" stroke-width="1.4" stroke-linecap="round"/></g>
             <g transform="translate(410 233)"><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><text y="-1" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="6.6" fill="#e9ebef">Editor</text><text y="7" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="6.6" fill="#e9ebef">Lite</text></g>
             <!-- label exit slot -->
             <rect x="106" y="262" width="428" height="96" rx="12" fill="url(#gSlot)"/>
@@ -567,6 +573,7 @@ body.dragging .drag-overlay { opacity: 1; }
             <path d="M58 371 H582" stroke="#fff" stroke-opacity=".08"/>
           </svg>
         </div>
+        <div class="p-hint" id="pHint" hidden></div>
         <div class="feed" id="feed">
           <div class="strip" id="strip"></div>
           <div class="head"></div>
@@ -1214,7 +1221,9 @@ async function runJob(send, pages, copies, n) {
       ok = true;
       await anim;
       setBtn("done");
-      toast("ok", `Printed ${n} label${n === 1 ? "" : "s"}`, "Ready to collect from the printer.");
+      const blank = pages[0] && pages[0].src === BLANK;
+      toast("ok", blank ? (feedCut ? "Cut" : "Fed - not cut yet") : `Printed ${n} label${n === 1 ? "" : "s"}`,
+        blank ? (feedCut ? "The blank piece is cut off." : "Press the scissors button to cut it off.") : "Ready to collect from the printer.");
     } else {
       stopAnim(); setBtn();
       toast("bad", job.message || "Problem printing", "Check the printer is on, the lid is closed and labels are loaded.", job.state === "error" && job.message !== "Cancelled" ? job.id : null);
@@ -1249,6 +1258,12 @@ async function playPrint(pages, copies) {
         { duration: clamp(total / 110 * 1000, 900, 5200) * (c ? 0.6 : 1), easing: "linear", fill: "forwards" }).finished;
       rig.classList.remove("feeding");
       if (!alive()) break;
+      if (pages[0].src === BLANK && !feedCut) {        // fed but not cut: the strip stays in the printer
+        await sleep(500);
+        await out.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: "forwards" }).finished;
+        out.remove();
+        continue;
+      }
       await cutFx();
       if (!alive()) break;
       await out.animate([{ transform: "translateY(0) rotate(0deg)", opacity: 1 }, { transform: "translateY(130px) rotate(-5deg)", opacity: 0 }],
@@ -1276,6 +1291,30 @@ async function cutFx() {
   ]);
 }
 $("#printBtn").addEventListener("click", doPrint);
+
+// the drawing's Feed and Cut buttons: the QL-1100 can't feed or cut on its own over USB, so both
+// send one blank label (shortest strip, or one die-cut label). First click asks, second click does it.
+let armed = null, armTimer = null, feedCut = true;
+const BLANK = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="#fff"/></svg>');
+function disarm() { armed = null; clearTimeout(armTimer); $$(".p-btn").forEach(b => b.classList.remove("armed")); $("#pHint").hidden = true; }
+$$(".p-btn").forEach(btn => btn.addEventListener("click", async () => {
+  if (printing) return;
+  if (STATUS.blocking) { toast("bad", STATUS.message, PROBLEM_HINT[STATUS.problem] || ""); return; }
+  const cut = btn.id === "btnCut", cont = MEDIA.kind === "continuous";
+  if (armed !== btn.id) {
+    disarm(); armed = btn.id; btn.classList.add("armed");
+    $("#pHint").textContent = cut ? `Click again to cut (feeds ${cont ? MEDIA.min_length_mm + " mm" : "one blank label"} first)`
+      : `Click again to feed ${cont ? MEDIA.min_length_mm + " mm" : "one blank label"} without cutting`;
+    $("#pHint").hidden = false;
+    armTimer = setTimeout(disarm, 3500);
+    return;
+  }
+  disarm();
+  const g = { paper: [MEDIA.paper_w_mm, cont ? MEDIA.min_length_mm : MEDIA.length_mm], area: [0, 0, 0, 0], shape: cont ? "rect" : (MEDIA.kind === "round" ? "round" : "die") };
+  feedCut = cut;
+  await runJob(() => fetch("/api/feed" + (cut ? "?cut=1" : ""), { method: "POST" }), [{ src: BLANK, g }], 1, 1);
+}));
+document.addEventListener("pointerdown", e => { if (armed && !e.target.closest(".p-btn")) disarm(); });
 
 // ------------------------------------------------------------------ toasts
 function toast(kind, title, sub, jobId) {
