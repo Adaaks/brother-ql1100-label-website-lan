@@ -677,7 +677,7 @@ const hydrate = (root = document) => $$("i[data-i]", root).forEach(el => { if (!
 
 // ------------------------------------------------------------------ state (defaults match the original site)
 const DEF_BLOCK = () => ({ text: "", font: "Arial", size: 36, bold: false, italic: false, underline: false, strike: false, align: "center", line_spacing: 1.0 });
-const DEF_TEXT = () => ({ blocks: [Object.assign(DEF_BLOCK(), { text: "Label", bold: true, size: 48 })], orientation: "horizontal", fit: false, length_mm: 0, fixed_len: 50, padding_mm: 1.5, border: false, invert: false });
+const DEF_TEXT = () => ({ blocks: [Object.assign(DEF_BLOCK(), { text: "Welcome", bold: true, size: 48, starter: true })], orientation: "horizontal", fit: false, length_mm: 0, fixed_len: 50, padding_mm: 1.5, border: false, invert: false });
 const DEF_FILE = () => ({ rotate: "auto", size: "fit", percent: 60, align: "center", trim: true, dither: false, darkness: 50, padding_mm: 1, border: false, invert: false });
 const S = {
   tab: store.get("tab", "text"),
@@ -835,7 +835,19 @@ function renderBlocks() {
     ta.value = b.text;
     sizeIn.value = b.size;
     styleTa(); syncStyle();
-    ta.addEventListener("input", () => { b.text = ta.value; changed(); });
+    // the starter "Welcome" disappears the moment you start typing (once), so you never have to delete it
+    ta.addEventListener("beforeinput", e => {
+      if (!b.starter) return;
+      b.starter = false;
+      if (e.inputType === "insertText" || e.inputType.startsWith("delete")) {
+        e.preventDefault();                     // typed letter replaces it; backspace just clears it
+        ta.value = e.inputType === "insertText" ? (e.data || "") : "";
+        ta.dispatchEvent(new Event("input"));
+      } else if (e.inputType.startsWith("insert")) {
+        ta.value = "";                          // paste, Enter...: clear first, then let it happen
+      }
+    });
+    ta.addEventListener("input", () => { b.text = ta.value; b.starter = false; changed(); });
     ta.addEventListener("keydown", e => {
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = { b: "bold", i: "italic", u: "underline" }[e.key.toLowerCase()];
