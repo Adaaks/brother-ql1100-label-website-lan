@@ -280,6 +280,7 @@ def _read_status():
                             "problem": None, "jobs": jobs})
     r = LINK.query()
     if r == "offline":
+        FED["mm"] = 0
         return _with_media({"state": "error", "message": "Printer is off or unplugged", "problem": "offline", "jobs": 0})
     if isinstance(r, dict):
         if r["media"]:
@@ -292,6 +293,8 @@ def _read_status():
             code, msg = "unsupported", f"Unsupported roll loaded ({r['width']} mm)"
         else:
             return _with_media({"state": "ready", "message": "Ready", "problem": None, "jobs": 0})
+        if code in ("no_media", "cover_open", "media_end", "off"):
+            FED["mm"] = 0                    # the hanging strip was most likely torn off
         return _with_media({"state": "error", "message": msg, "problem": code, "jobs": 0})
     # status unknown (device busy or no reply): fall back to what Windows knows
     problems = [msg for bit, msg in PS.items() if st & bit]
@@ -302,7 +305,12 @@ def _read_status():
     return _with_media({"state": "ready", "message": "Ready", "problem": None, "jobs": 0})
 
 
+# blank tape fed with the Feed button but not cut yet (shown hanging out of the drawn printer)
+FED = {"mm": 0.0}
+
+
 def _with_media(v):
+    v["fed_mm"] = round(FED["mm"], 1)
     v["media"] = MEDIA.media.to_json()
     v["detected"] = MEDIA.detected
     v["blocking"] = v.get("problem") in BLOCKING
@@ -339,6 +347,10 @@ class Jobs:
             job.update(state="error", message=f"Could not send to printer: {e}")
             return job
         job.update(state="printing", message="Printing...")
+        if cut:
+            FED["mm"] = 0
+        else:
+            FED["mm"] += sum(media.geometry(im.height)["length_mm"] for im in images)
         threading.Thread(target=self._watch, args=(job,), daemon=True).start()
         log.info("job %s: %d label(s) on %s, %d bytes", jid, len(images), media.id, len(data))
         return job

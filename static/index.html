@@ -259,6 +259,8 @@ textarea.text::placeholder { color: var(--dim); }
 .feed { position: relative; z-index: 2; width: 60%; margin: -34.0625% auto 0; clip-path: inset(0 -70% -100000px -70%); }
 .feed::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18px; z-index: 5; pointer-events: none; background: linear-gradient(rgba(0, 0, 0, .62), rgba(0, 0, 0, 0)); }
 .strip { position: relative; }
+.fedstrip { position: relative; width: 100%; height: 0; background: #fff; box-shadow: 0 2px 0 rgba(0, 0, 0, .06) inset; }
+.fedstrip.grow { box-shadow: none; }
 .strip.printout { position: absolute; left: 0; right: 0; top: 0; transform-origin: 50% 0; z-index: 3; }
 .paper { position: relative; width: 100%; background: #fff; overflow: hidden; cursor: zoom-in; transition: height .32s cubic-bezier(.3, .9, .3, 1); box-shadow: 0 34px 50px -26px rgba(0, 0, 0, .95), 0 2px 0 rgba(0, 0, 0, .25); }
 .paper.instant { transition: none; }
@@ -575,6 +577,7 @@ body.dragging .drag-overlay { opacity: 1; }
         </div>
         <div class="p-hint" id="pHint" hidden></div>
         <div class="feed" id="feed">
+          <div class="fedstrip" id="fedStrip"></div>
           <div class="strip" id="strip"></div>
           <div class="head"></div>
           <div class="cut" id="cutLine"></div>
@@ -1152,6 +1155,7 @@ async function showEmpty(msg, isError) {
 }
 new ResizeObserver(() => {
   const s = scale();
+  $("#fedStrip").style.transition = "none"; $("#fedStrip").style.height = FED * s + "px";
   $$("#feed .paper").forEach(p => { p.classList.add("instant"); placePaper(p, s); });
   requestAnimationFrame(() => $$("#feed .paper.instant").forEach(p => p.classList.remove("instant")));
 }).observe($("#feed"));
@@ -1204,9 +1208,9 @@ async function doPrint() {
   const pages = lastPreview.pages.filter((_, i) => keep(i)).map(pg => ({ src: pg.png, g: geomOf(pg) }));
   await runJob(() => fetch("/api/print", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) }), pages, S.copies, labelCount());
 }
-async function runJob(send, pages, copies, n) {
+async function runJob(send, pages, copies, n, animFn) {
   printing = true; setBtn("busy");
-  const anim = playPrint(pages, copies);
+  const anim = animFn ? animFn() : playPrint(pages, copies);
   let ok = false;
   try {
     const r = await send();
@@ -1244,26 +1248,25 @@ async function playPrint(pages, copies) {
   animating = true;
   rig.classList.add("printing");
   try {
-    if (stripState === "shown") await strip.animate([{ transform: "translateY(0)" }, { transform: "translateY(-102%)" }], { duration: 360, easing: "cubic-bezier(.55,0,.8,.3)", fill: "forwards" }).finished;
+    if (stripState === "shown") await (FED > 0      // paper is hanging out: fade the preview rather than pull it through the strip
+      ? strip.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: "forwards" })
+      : strip.animate([{ transform: "translateY(0)" }, { transform: "translateY(-102%)" }], { duration: 360, easing: "cubic-bezier(.55,0,.8,.3)", fill: "forwards" })).finished;
     strip.style.visibility = "hidden";
     for (let c = 0; c < Math.min(copies, 3) && alive(); c++) {
       const out = document.createElement("div");
       out.className = "strip printout"; outs.push(out);
       pages.forEach((pg, i) => { const p = makePaper(pg.src, pg.g, s); if (i) p.classList.add("gap"); out.appendChild(p); });
+      const lead = c === 0 && FED > 0 ? FED : 0;          // uncut blank already hanging out comes along with it
+      if (lead) out.prepend(makePaper(BLANK, { paper: [MEDIA.paper_w_mm, lead], area: [0, 0, 0, 0], shape: "rect" }, s));
       feed.appendChild(out);
-      const total = pages.reduce((a, p) => a + p.g.paper[1], 0);
+      if (lead) setFed(0);
+      const total = pages.reduce((a, p) => a + p.g.paper[1], 0), from = -(out.offsetHeight - lead * s);
       rig.classList.add("feeding");
       // the QL-1100 prints at ~110 mm/s, so the label comes out at roughly real speed
-      await out.animate([{ transform: "translateY(-100%)" }, { transform: "translateY(0)" }],
+      await out.animate([{ transform: `translateY(${from}px)` }, { transform: "translateY(0)" }],
         { duration: clamp(total / 110 * 1000, 900, 5200) * (c ? 0.6 : 1), easing: "linear", fill: "forwards" }).finished;
       rig.classList.remove("feeding");
       if (!alive()) break;
-      if (pages[0].src === BLANK && !feedCut) {        // fed but not cut: the strip stays in the printer
-        await sleep(500);
-        await out.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: "forwards" }).finished;
-        out.remove();
-        continue;
-      }
       await cutFx();
       if (!alive()) break;
       await out.animate([{ transform: "translateY(0) rotate(0deg)", opacity: 1 }, { transform: "translateY(130px) rotate(-5deg)", opacity: 0 }],
@@ -1294,7 +1297,22 @@ $("#printBtn").addEventListener("click", doPrint);
 
 // the drawing's Feed and Cut buttons: the QL-1100 can't feed or cut on its own over USB, so both
 // send one blank label (shortest strip, or one die-cut label). First click asks, second click does it.
-let armed = null, armTimer = null, feedCut = true;
+let armed = null, armTimer = null, feedCut = true, FED = 0;
+// blank paper that's been fed but not cut: it hangs out of the slot until something cuts it
+function setFed(mm, ms = 0) {
+  FED = Math.max(0, mm);
+  const el = $("#fedStrip");
+  el.style.transition = ms ? `height ${ms}ms linear` : "none";
+  el.style.height = FED * scale() + "px";
+}
+async function feedOut(mm) {                     // Feed button: the strip grows out of the slot at ~110 mm/s
+  if (reduceMotion) return setFed(FED + mm);
+  const rig = $("#rig"), ms = clamp(mm / 110 * 1000, 600, 4000);
+  rig.classList.add("printing", "feeding");
+  setFed(FED + mm, ms);
+  await sleep(ms);
+  rig.classList.remove("printing", "feeding");
+}
 const BLANK = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="#fff"/></svg>');
 function disarm() { armed = null; clearTimeout(armTimer); $$(".p-btn").forEach(b => b.classList.remove("armed")); $("#pHint").hidden = true; }
 $$(".p-btn").forEach(btn => btn.addEventListener("click", async () => {
@@ -1312,7 +1330,8 @@ $$(".p-btn").forEach(btn => btn.addEventListener("click", async () => {
   disarm();
   const g = { paper: [MEDIA.paper_w_mm, cont ? MEDIA.min_length_mm : MEDIA.length_mm], area: [0, 0, 0, 0], shape: cont ? "rect" : (MEDIA.kind === "round" ? "round" : "die") };
   feedCut = cut;
-  await runJob(() => fetch("/api/feed" + (cut ? "?cut=1" : ""), { method: "POST" }), [{ src: BLANK, g }], 1, 1);
+  await runJob(() => fetch("/api/feed" + (cut ? "?cut=1" : ""), { method: "POST" }), [{ src: BLANK, g }], 1, 1,
+    cut ? null : () => feedOut(g.paper[1]));
 }));
 document.addEventListener("pointerdown", e => { if (armed && !e.target.closest(".p-btn")) disarm(); });
 
@@ -1483,6 +1502,7 @@ function applyStatus(s) {
   if (s.media) MEDIA = s.media;
   $("#status").dataset.state = s.state; $("#statusText").textContent = s.message; $("#rig").dataset.state = s.state;
   $("#rig").classList.toggle("no-media", s.problem === "no_media" || s.problem === "media_end");
+  if (typeof s.fed_mm === "number" && !printing && !animating && Math.abs(s.fed_mm - FED) > 0.05) setFed(s.fed_mm, 300);
   const roll = s.problem === "no_media" ? "no roll loaded" : MEDIA.name + (s.detected ? "" : " (last used)");
   $("#rollName").textContent = roll; $("#rollMobile").textContent = roll;
   $("#alert").hidden = !s.blocking;
