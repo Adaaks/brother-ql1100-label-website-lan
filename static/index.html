@@ -294,6 +294,7 @@ textarea.text::placeholder { color: var(--dim); }
 /* ------------------------------------------------------------------ dock */
 .dock { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-top: 1px solid var(--line); background: rgba(9, 10, 15, .55); flex: none; flex-wrap: wrap; }
 .copies { display: flex; align-items: center; gap: 10px; }
+.quality .seg { height: 36px; }
 .dock .lbl { font-size: 13px; color: var(--muted); }
 .usage { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .print-btn { position: relative; margin-left: auto; height: 52px; min-width: 150px; padding: 0 26px; border: 0; border-radius: 15px; overflow: hidden; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 16px; font-weight: 700; letter-spacing: -.01em; background: var(--grad); box-shadow: 0 14px 36px -12px rgba(124, 131, 255, .95), inset 0 1px 0 rgba(255, 255, 255, .35); transition: transform .15s, box-shadow .2s, filter .2s, background .3s; }
@@ -593,6 +594,12 @@ body.dragging .drag-overlay { opacity: 1; }
       <div class="copies"><span class="lbl">Copies</span>
         <div class="stepper" id="copies"><button type="button" data-d="-1" aria-label="Fewer copies">−</button><input type="number" inputmode="numeric" aria-label="Copies"><button type="button" data-d="1" aria-label="More copies">+</button></div>
       </div>
+      <div class="copies quality"><span class="lbl">Quality</span>
+        <div class="seg" id="quality">
+          <button type="button" data-v="best" title="Give priority to print quality (the default)">Best</button>
+          <button type="button" data-v="fast" title="Give priority to print speed - prints noticeably quicker">Fast</button>
+        </div>
+      </div>
       <span class="usage" id="usage"></span>
       <button class="print-btn" id="printBtn" type="button" disabled><span class="pb-ico"><i data-i="printer" data-s="19"></i></span><span class="pb-txt">Print</span><kbd title="Shortcut: Ctrl + Enter (or Ctrl + P)">Ctrl + Enter</kbd></button>
     </div>
@@ -695,6 +702,7 @@ const S = {
   text: DEF_TEXT(),                                   // text starts fresh each visit
   file: Object.assign(DEF_FILE(), { id: null, name: "", pages: 0, auto: null, exclude: [], crop: null }),   // upload settings start fresh each visit
   copies: 1,
+  quality: "best",          // "best" (default) or "fast", like P-touch's print quality setting
 };
 if (!["text", "file", "history"].includes(S.tab)) S.tab = "text";
 if (!Array.isArray(S.text.blocks) || !S.text.blocks.length) S.text.blocks = DEF_TEXT().blocks;
@@ -1187,6 +1195,7 @@ function updateMeta() {
   btn.title = STATUS.blocking ? STATUS.message : "";
   $("#zoomBtn").disabled = !j;
 }
+seg($("#quality"), () => S, "quality");
 stepper($("#copies"), { get: () => S.copies, set: v => { S.copies = v; updateMeta(); }, step: 1, min: 1, max: 100, dec: 0 });
 
 // ------------------------------------------------------------------ printing + animation
@@ -1205,7 +1214,7 @@ async function doPrint() {
   const p = previewPayload(); if (!p) return;
   const keep = i => !(S.mode === "file" && S.file.exclude.includes(i));
   if (p.kind === "file") p.file.pages = [...Array(S.file.pages).keys()].filter(keep);
-  p.copies = S.copies;
+  p.copies = S.copies; p.quality = S.quality;
   const pages = lastPreview.pages.filter((_, i) => keep(i)).map(pg => ({ src: pg.png, g: geomOf(pg) }));
   await runJob(() => fetch("/api/print", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) }), pages, S.copies, labelCount());
 }
@@ -1244,48 +1253,61 @@ async function runJob(send, pages, copies, n, animFn) {
 }
 let animTok = 0;
 const stopAnim = () => { animTok++; };
+// Print timings measured on the QL-1100 with a stopwatch, per quality mode: printing starts `startS` after pressing
+// Print (the printer receiving the job), then the "Welcome" label (25.5 mm) takes `welcomeS` to print and a 4x6"
+// postage label (152.4 mm) takes `postageS`; other lengths fall on the line between. The cut follows straight away.
+const timing = (startS, welcomeS, postageS) => {
+  const mmPerS = (152.4 - 25.5) / (postageS - welcomeS);
+  return { startS, mmPerS, feedBaseS: welcomeS - 25.5 / mmPerS, cutS: 0.5 };
+};
+const PRINT_TIMES = {
+  best: timing(1.5, 2, 7),
+  fast: timing(1.5, 2, 7),          // not measured yet - same as Best for now
+};
 async function playPrint(pages, copies, done = Promise.resolve(true)) {
   if (reduceMotion || !pages.length) return;
   const my = ++animTok, alive = () => my === animTok;
   const rig = $("#rig"), feed = $("#feed"), strip = $("#strip"), s = scale();
-  const outs = [];
+  const outs = [], drops = [], PRINT_T = PRINT_TIMES[S.quality] || PRINT_TIMES.best;
+  const t0 = performance.now();
+  const until = async t => { const ms = t0 + t * 1000 - performance.now(); if (ms > 0) await sleep(ms); };
   animating = true;
   rig.classList.add("printing");
   try {
     if (stripState === "shown" && FED === 0)         // (while paper hangs the preview is already hidden)
       await strip.animate([{ transform: "translateY(0)" }, { transform: "translateY(-102%)" }], { duration: 360, easing: "cubic-bezier(.55,0,.8,.3)", fill: "forwards" }).finished;
     strip.style.visibility = "hidden";
-    let isDone = false;
-    done.then(() => { isDone = true; });
     const shown = Math.min(copies, 3);
+    let tStart = PRINT_T.startS;                     // when each label starts coming out, counted from pressing Print
+    let failed = false;
+    done.then(ok => { if (!ok) failed = true; });
     for (let c = 0; c < shown && alive(); c++) {
-      const last = c === shown - 1;
       const out = document.createElement("div");
       out.className = "strip printout"; outs.push(out);
       pages.forEach((pg, i) => { const p = makePaper(pg.src, pg.g, s); if (i) p.classList.add("gap"); out.appendChild(p); });
+      const total = pages.reduce((a, p) => a + p.g.paper[1], 0);
+      const feedS = PRINT_T.feedBaseS + total / PRINT_T.mmPerS;
+      await until(tStart);                           // the printer is still receiving the job: nothing comes out yet
+      tStart += feedS + PRINT_T.cutS;                // the next copy starts after this one is cut
+      if (!alive()) break;
       const lead = c === 0 && FED > 0 ? FED : 0;          // uncut blank already hanging out comes along with it
       if (lead) out.prepend(makePaper(BLANK, { paper: [MEDIA.paper_w_mm, lead], area: [0, 0, 0, 0], shape: "rect" }, s));
+      out.style.transform = "translateY(-200%)";
       feed.appendChild(out);
       if (lead) setFed(0);
-      const total = pages.reduce((a, p) => a + p.g.paper[1], 0), from = -(out.offsetHeight - lead * s);
+      const from = -(out.offsetHeight - lead * s);
       rig.classList.add("feeding");
-      // the QL-1100 prints at ~110 mm/s, so the label comes out at roughly real speed
-      const feedAnim = out.animate([{ transform: `translateY(${from}px)` }, { transform: "translateY(0)" }],
-        { duration: clamp(total / 110 * 1000, 900, 5200) * (c ? 0.6 : 1), easing: "linear", fill: "forwards" });
-      if (isDone) feedAnim.updatePlaybackRate(4);       // the printer already finished: catch up
-      else done.then(() => feedAnim.updatePlaybackRate(4));
-      await feedAnim.finished;
+      await out.animate([{ transform: `translateY(${from}px)` }, { transform: "translateY(0)" }],
+        { duration: feedS * 1000, easing: "linear", fill: "forwards" }).finished;
       rig.classList.remove("feeding");
       if (!alive()) break;
-      // the final cut happens when the printer reports it's done, not on a guessed timer
-      if (last && !(await done)) break;
-      if (!alive()) break;
+      if (failed || !alive()) break;                 // cut as soon as the label is out (unless the print failed)
       await cutFx();
       if (!alive()) break;
-      await out.animate([{ transform: "translateY(0) rotate(0deg)", opacity: 1 }, { transform: "translateY(130px) rotate(-5deg)", opacity: 0 }],
-        { duration: 620, easing: "cubic-bezier(.55,0,.9,.4)", fill: "forwards" }).finished;
-      out.remove();
+      drops.push(out.animate([{ transform: "translateY(0) rotate(0deg)", opacity: 1 }, { transform: "translateY(130px) rotate(-5deg)", opacity: 0 }],
+        { duration: 620, easing: "cubic-bezier(.55,0,.9,.4)", fill: "forwards" }).finished.then(() => out.remove()));
     }
+    await Promise.all(drops);
   } catch {}
   finally {
     outs.forEach(o => o.remove());
@@ -1541,7 +1563,7 @@ async function reprint(e) {
   if (printing) return;
   // the animation shows the saved label; if it was made for another roll the server re-makes it, so skip it
   const pages = (e.media || "102") === MEDIA.id ? geoms(e).slice(0, 12).map((g, n) => ({ src: `/api/history/${e.id}/${n}.png`, g })) : [];
-  await runJob(() => fetch(`/api/history/${e.id}/reprint`, { method: "POST" }), pages, e.copies, e.count * e.copies);
+  await runJob(() => fetch(`/api/history/${e.id}/reprint?quality=${S.quality}`, { method: "POST" }), pages, e.copies, e.count * e.copies);
 }
 function editEntry(e) {
   S.text = Object.assign(DEF_TEXT(), JSON.parse(JSON.stringify(e.spec)));

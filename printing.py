@@ -28,7 +28,7 @@ MEDIA_FILE = os.path.join(BASE, "media.json")
 log = logging.getLogger("labelprinter")
 
 
-def build_raster(images, media, cut=True):
+def build_raster(images, media, cut=True, best=True):
     """Brother raster data for `images` (already sized for `media`). Every label is cut unless cut=False."""
     qlr = BrotherQLRaster(MODEL)
     qlr.exception_on_warning = True
@@ -47,7 +47,9 @@ def build_raster(images, media, cut=True):
         qlr.mtype = media.status_type
         qlr.mwidth = media.status_w
         qlr.mlength = 0 if media.continuous else media.status_l
-        qlr.pquality = 1
+        # ESC i z bit 0x40, "priority given to print quality": Best sets it, Fast leaves it off like Brother's
+        # own driver does - the printer then runs noticeably quicker
+        qlr.pquality = 1 if best else 0
         qlr.add_media_and_quality(im.height)
         qlr.add_autocut(cut)
         if cut:
@@ -146,6 +148,7 @@ class PrinterLink:
 
     def __init__(self):
         self.lock = threading.Lock()
+        self.busy_until = 0.0         # a directly sent feed/cut is still running until then
 
     def _paths(self):
         try:
@@ -176,6 +179,8 @@ class PrinterLink:
 
     def query(self):
         """Returns a parsed status dict, "offline" if the printer isn't connected, or None if unknown."""
+        if self.busy():
+            return None                              # a direct feed/cut is running: never interrupt it
         with self.lock:
             try:
                 if spooler_jobs():
@@ -213,11 +218,14 @@ class PrinterLink:
             finally:
                 _k32.CloseHandle(handle)
 
-    def write(self, data):
+    def busy(self):
+        return time.monotonic() < self.busy_until
+
+    def write(self, data, busy_s=0.0):
         """Sends a short command straight to the printer, bypassing the print queue (and Brother's
         language monitor, which can leave a job that prints nothing - like a cut - stuck "printing")."""
         with self.lock:
-            if spooler_jobs():
+            if spooler_jobs() or self.busy():
                 raise RuntimeError("the printer is busy printing")
             handle = None
             for path in self._paths():
@@ -231,6 +239,7 @@ class PrinterLink:
                 buf = ctypes.create_string_buffer(data, len(data))
                 if self._io(handle, _k32.WriteFile, buf, len(data), 5000) != len(data):
                     raise RuntimeError("the printer didn't accept the command")
+                self.busy_until = time.monotonic() + busy_s      # no status requests until it's done
             finally:
                 _k32.CloseHandle(handle)
 
@@ -301,7 +310,7 @@ def _read_status():
         log.warning("status failed: %s", e)
         return _with_media({"state": "error", "message": f"Printer '{PRINTER}' isn't installed", "problem": "missing", "jobs": 0})
     st, attrs, jobs = info["Status"], info["Attributes"], info["cJobs"]
-    if jobs or st & 0x400:
+    if jobs or st & 0x400 or LINK.busy():
         what = ACTIVITY["what"]
         return _with_media({"state": "printing", "message": f"{what} ({jobs} in queue)" if jobs > 1 else what,
                             "problem": None, "jobs": jobs})
@@ -366,7 +375,7 @@ class Jobs:
         with self._lock:
             self._jobs[jid] = job
         try:
-            LINK.write(CUT_NOW)
+            LINK.write(CUT_NOW, busy_s=0.5)
         except Exception as e:
             log.warning("cut failed: %s", e)
             job.update(state="error", message=f"Couldn't cut: {e}")
@@ -380,12 +389,38 @@ class Jobs:
         threading.Thread(target=finish, daemon=True).start()
         return job
 
-    def submit(self, images, media, title, cut=True):
-        data = build_raster(images, media, cut)
+    def feed(self, media, cut=False):
+        """Feeds one blank label (the shortest strip, or one die-cut label) straight over USB like cut(),
+        so it starts instantly instead of going through the print queue."""
+        length = media.min_lines if media.continuous else media.print_l
+        data = build_raster([Image.new("L", (media.print_w, length), 255)], media, cut, best=False)   # blank: no quality to keep
+        mm = media.geometry(length)["length_mm"]
+        jid = next(self._ids)
+        ACTIVITY["what"] = "Feeding"
+        job = {"id": jid, "state": "printing", "message": "Feeding...", "labels": 1, "created": time.time(), "spool_id": None}
+        with self._lock:
+            self._jobs[jid] = job
+        try:
+            LINK.write(data, busy_s=mm / 110 + (0.5 if cut else 0.2))
+        except Exception as e:
+            log.warning("feed failed: %s", e)
+            job.update(state="error", message=f"Couldn't feed: {e}")
+            return job
+        FED.update(mm=0 if cut else FED["mm"] + mm)
+
+        def finish():                                # ~110 mm/s, plus the cut if there is one
+            time.sleep(mm / 110 + (0.5 if cut else 0.2))
+            job.update(state="done", message="Fed")
+            invalidate_status()
+        threading.Thread(target=finish, daemon=True).start()
+        return job
+
+    def submit(self, images, media, title, cut=True, best=True):
+        data = build_raster(images, media, cut, best)
         fed = 0 if cut else FED["mm"] + sum(media.geometry(im.height)["length_mm"] for im in images)
         job = self._send(data, title, len(images), on_sent=lambda: FED.update(mm=fed))
         if job["state"] != "error":
-            log.info("job %s: %d label(s) on %s, %d bytes", job["id"], len(images), media.id, len(data))
+            log.info("job %s: %d label(s) on %s, %s, %d bytes", job["id"], len(images), media.id, "best" if best else "fast", len(data))
         return job
 
     def _send(self, data, title, labels, on_sent):

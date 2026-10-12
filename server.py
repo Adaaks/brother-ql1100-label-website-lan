@@ -318,7 +318,8 @@ def do_print():
     if len(labels) * copies > 300:
         return _err("That's too many labels for one job (max 300).")
     kind = payload.get("kind")
-    job = jobs.submit(labels * copies, media, f"labelprinter {kind}")
+    best = payload.get("quality", "best") != "fast"
+    job = jobs.submit(labels * copies, media, f"labelprinter {kind}", best=best)
     log.info("print request from %s: %d label(s)", request.remote_addr, len(labels) * copies)
     if job["state"] != "error":
         try:
@@ -338,9 +339,8 @@ def feed():
     if problem:
         return problem
     media = current_media()
-    length = media.min_lines if media.continuous else media.print_l
     cut = request.args.get("cut") == "1"
-    job = jobs.submit([Image.new("L", (media.print_w, length), 255)], media, "labelprinter " + ("cut" if cut else "feed"), cut=cut)
+    job = jobs.feed(media, cut)                      # straight over USB, like the cut button
     log.info("%s (%s) from %s", "cut" if cut else "feed", media.id, request.remote_addr)
     return jsonify(_public(job))
 
@@ -403,7 +403,7 @@ def history_reprint(hid):
         images = [render.to_print(canvas, rotated)]
     else:
         return _err(f"This label was made for {made_for.name}. Load that roll to print it again.", 409, problem="other_roll")
-    job = jobs.submit(images * e["copies"], media, "labelprinter reprint")
+    job = jobs.submit(images * e["copies"], media, "labelprinter reprint", best=request.args.get("quality") != "fast")
     log.info("reprint %s from %s: %d label(s)", hid, request.remote_addr, len(images) * e["copies"])
     if job["state"] != "error":
         history.bump(hid)
