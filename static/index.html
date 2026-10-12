@@ -455,7 +455,7 @@ body.dragging .drag-overlay { opacity: 1; }
           <button class="icon-btn" id="removeFile" type="button" title="Remove file"><i data-i="x"></i></button>
         </div>
 
-        <div class="sect"><h3>Rotation</h3></div>
+        <div class="sect"><h3>Rotation</h3><button class="link" id="resetFile" type="button"><i data-i="reset" data-s="14"></i>Reset settings</button></div>
         <div class="seg full" id="rotate">
           <button type="button" data-v="auto" title="Turns the label when that makes it fit the roll better">Auto</button>
           <button type="button" data-v="0">0°</button><button type="button" data-v="90">90°</button><button type="button" data-v="180">180°</button><button type="button" data-v="270">270°</button>
@@ -681,8 +681,8 @@ const DEF_TEXT = () => ({ blocks: [Object.assign(DEF_BLOCK(), { text: "Label", b
 const DEF_FILE = () => ({ rotate: "auto", size: "fit", percent: 60, align: "center", trim: true, dither: false, darkness: 50, padding_mm: 1, border: false, invert: false });
 const S = {
   tab: store.get("tab", "text"),
-  text: Object.assign(DEF_TEXT(), store.get("text", {})),
-  file: Object.assign(DEF_FILE(), store.get("fileopts", {}), { id: null, name: "", pages: 0, auto: null, exclude: [], crop: null }),
+  text: DEF_TEXT(),                                   // text starts fresh each visit
+  file: Object.assign(DEF_FILE(), { id: null, name: "", pages: 0, auto: null, exclude: [], crop: null }),   // upload settings start fresh each visit
   copies: 1,
 };
 if (!["text", "file", "history"].includes(S.tab)) S.tab = "text";
@@ -899,16 +899,26 @@ $("#resetText").addEventListener("click", () => {
 
 // ------------------------------------------------------------------ upload / shipping labels
 function syncSizeRows() { const m = F().size; $("#pctRow").hidden = m !== "percent"; $("#alignRow").hidden = m === "fit"; $("#sizeCard").hidden = m === "fit"; }
-seg($("#rotate"), F, "rotate");
-seg($("#sizeMode"), F, "size", syncSizeRows);
-seg($("#fAlign"), F, "align");
+const fileSync = [
+  seg($("#rotate"), F, "rotate"),
+  seg($("#sizeMode"), F, "size", syncSizeRows),
+  seg($("#fAlign"), F, "align"),
+  syncSizeRows,
+  bindRange("pct", "pctVal", "percent", v => v + "%"),
+  bindRange("dark", "darkVal", "darkness", v => v),
+  bindSwitch("trim", F, "trim"),
+  bindSwitch("dither", F, "dither"),
+  bindSwitch("fBorder", F, "border"),
+  bindSwitch("fInvert", F, "invert"),
+  stepper($("#fPad"), { get: () => F().padding_mm, set: v => { F().padding_mm = v; changed(); }, step: 0.5, min: 0, max: 20 }),
+];
 syncSizeRows();
-bindRange("pct", "pctVal", "percent", v => v + "%");
-bindRange("dark", "darkVal", "darkness", v => v);
-["trim", "dither"].forEach(k => bindSwitch(k, F, k));
-bindSwitch("fBorder", F, "border");
-bindSwitch("fInvert", F, "invert");
-stepper($("#fPad"), { get: () => F().padding_mm, set: v => { F().padding_mm = v; changed(); }, step: 0.5, min: 0, max: 20 });
+try { localStorage.removeItem("lp_fileopts"); localStorage.removeItem("lp_text"); } catch {}   // saved by older versions
+$("#resetFile").addEventListener("click", () => {
+  Object.assign(S.file, DEF_FILE(), { crop: null });
+  fileSync.forEach(f => f()); syncFileCard(); changed(true);
+  toast("info", "Upload settings reset to the defaults");
+});
 
 const fileInput = $("#fileInput");
 $("#drop").addEventListener("click", () => fileInput.click());
@@ -1013,9 +1023,6 @@ let stripState = "empty", animating = false, pendingPreview = null, firstFeed = 
 const scale = () => ($("#feed").clientWidth || 360) / MEDIA.paper_w_mm;
 
 function changed(now) {
-  store.set("text", S.text);
-  const { id, name, pages, auto, exclude, crop, ...opts } = S.file;
-  store.set("fileopts", opts);
   clearTimeout(timer);
   timer = setTimeout(refresh, now ? 0 : 200);
 }
