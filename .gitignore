@@ -1,0 +1,8 @@
+# local environment and per-PC data (never committed)
+venv/
+__pycache__/
+logs/
+history/
+media.json
+fonts_cache.json
+*.pyc

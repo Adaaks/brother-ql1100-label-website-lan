@@ -1,0 +1,1501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07080c">
+<title>labelprinter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a78bfa'/%3E%3Cstop offset='.5' stop-color='%237c83ff'/%3E%3Cstop offset='1' stop-color='%2338bdf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='2' y='2' width='36' height='36' rx='11' fill='url(%23g)'/%3E%3Crect x='9' y='11' width='22' height='9' rx='3' fill='%230b0d14'/%3E%3Crect x='12' y='17' width='16' height='15' rx='1.5' fill='white'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #07080c;
+  --panel: rgba(15, 17, 24, .74);
+  --panel-border: rgba(255, 255, 255, .07);
+  --card: rgba(255, 255, 255, .028);
+  --card-2: rgba(255, 255, 255, .05);
+  --card-3: rgba(255, 255, 255, .085);
+  --field: rgba(0, 0, 0, .28);
+  --line: rgba(255, 255, 255, .065);
+  --line-2: rgba(255, 255, 255, .11);
+  --line-3: rgba(255, 255, 255, .18);
+  --text: #eef0f6;
+  --text-2: #c3c8d4;
+  --muted: #868d9e;
+  --dim: #596072;
+  --accent: #8b7bff;
+  --accent-soft: rgba(139, 123, 255, .15);
+  --accent-line: rgba(139, 123, 255, .5);
+  --grad: linear-gradient(135deg, #a78bfa 0%, #7c83ff 45%, #38bdf8 100%);
+  --ok: #3ee08f;
+  --warn: #ffc046;
+  --bad: #ff6b6b;
+  --r-lg: 20px;
+  --r-md: 14px;
+  --font: "Segoe UI Variable Text", "Segoe UI Variable Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 14.5px/1.45 var(--font); -webkit-font-smoothing: antialiased; overflow: hidden; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background:
+  radial-gradient(1000px 560px at 78% -12%, rgba(124, 131, 255, .20), transparent 62%),
+  radial-gradient(760px 520px at -8% 108%, rgba(56, 189, 248, .10), transparent 60%),
+  radial-gradient(600px 420px at 45% 115%, rgba(167, 139, 250, .07), transparent 60%); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+i[data-i] { display: inline-flex; font-style: normal; }
+::selection { background: rgba(139, 123, 255, .45); }
+* { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .13) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .12); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+
+/* ------------------------------------------------------------------ top bar */
+.topbar { height: 64px; display: flex; align-items: center; gap: 16px; padding: 0 22px; border-bottom: 1px solid var(--line); background: rgba(7, 8, 12, .55); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); position: relative; z-index: 10; }
+.brand { display: flex; align-items: center; gap: 11px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 19px; letter-spacing: -.025em; }
+.brand b { font-weight: 700; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand-mark { width: 34px; height: 34px; filter: drop-shadow(0 6px 16px rgba(124, 131, 255, .45)); }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.pill { display: inline-flex; align-items: center; gap: 9px; height: 34px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line-2); background: var(--card); color: var(--text-2); font-size: 13px; white-space: nowrap; }
+.pill .muted { color: var(--muted); }
+.led { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
+.status[data-state=ready] .led { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+.status[data-state=printing] .led { background: var(--warn); box-shadow: 0 0 10px var(--warn); animation: blink 1s infinite; }
+.status[data-state=error] .led { background: var(--bad); box-shadow: 0 0 10px var(--bad); animation: blink 1.4s infinite; }
+@keyframes blink { 50% { opacity: .3; } }
+
+/* ------------------------------------------------------------------ layout */
+.app { height: calc(100vh - 64px); height: calc(100dvh - 64px); display: grid; grid-template-columns: 430px minmax(0, 1fr); gap: 18px; padding: 18px; max-width: 1720px; margin: 0 auto; }
+.panel { min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--r-lg); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .75), inset 0 1px 0 rgba(255, 255, 255, .045); }
+
+/* ------------------------------------------------------------------ tabs */
+.tabs { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); margin: 14px 14px 2px; padding: 4px; border-radius: 15px; background: rgba(0, 0, 0, .38); border: 1px solid var(--line); flex: none; }
+.tabs button { position: relative; z-index: 1; height: 40px; border: 0; background: none; border-radius: 11px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-weight: 600; font-size: 13.5px; cursor: pointer; transition: color .2s; }
+.tabs button:hover { color: var(--text-2); }
+.tabs button.on { color: var(--text); }
+.tabs .ind { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 3); border-radius: 11px; background: linear-gradient(180deg, rgba(255, 255, 255, .11), rgba(255, 255, 255, .05)); border: 1px solid var(--line-2); box-shadow: 0 8px 22px -8px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .06); transition: transform .38s cubic-bezier(.3, 1.2, .4, 1); }
+.panel-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 22px; }
+.pane { animation: paneIn .3s ease both; }
+@keyframes paneIn { from { opacity: 0; transform: translateY(6px); } }
+
+/* ------------------------------------------------------------------ sections, cards, rows */
+.sect { display: flex; align-items: center; justify-content: space-between; margin: 20px 4px 10px; min-height: 26px; }
+.sect h3 { margin: 0; font-size: 11.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.sect-note { font-size: 12px; color: var(--dim); }
+.link { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--muted); font-size: 12.5px; padding: 4px 8px; border-radius: 7px; cursor: pointer; }
+.link:hover { color: var(--text); background: var(--card-2); }
+.card { border: 1px solid var(--line); background: var(--card); border-radius: var(--r-md); padding: 2px 14px; }
+.card.mt { margin-top: 10px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 54px; padding: 8px 0; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row.stack { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px 0; }
+label.row, .row label.row-text { cursor: pointer; }
+.row-text { display: flex; flex-direction: column; min-width: 0; }
+.row-text b { font-weight: 600; font-size: 14px; }
+.row-text small { color: var(--muted); font-size: 12px; margin-top: 1px; }
+.row-ctl { display: flex; align-items: center; gap: 10px; }
+
+/* switches: the whole switch (and its row label) is clickable */
+.switch { position: relative; flex: none; width: 44px; height: 26px; }
+.switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.switch .track { position: absolute; inset: 0; border-radius: 99px; background: rgba(255, 255, 255, .13); transition: background .2s, box-shadow .2s; pointer-events: none; }
+.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .45); transition: transform .25s cubic-bezier(.3, 1.4, .5, 1); }
+.switch input:checked + .track { background: var(--grad); box-shadow: 0 0 16px -2px rgba(124, 131, 255, .6); }
+.switch input:checked + .track::after { transform: translateX(18px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* fields */
+.stepper { display: inline-flex; align-items: center; height: 36px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--field); flex: none; }
+.stepper button { width: 30px; height: 100%; border: 0; background: none; color: var(--muted); font-size: 17px; line-height: 1; cursor: pointer; border-radius: 9px; }
+.stepper button:hover { color: var(--text); background: var(--card-2); }
+.stepper input { width: 42px; height: 100%; border: 0; background: none; text-align: center; font-weight: 600; padding: 0; outline: none; -moz-appearance: textfield; appearance: textfield; }
+.stepper input::-webkit-inner-spin-button, .stepper input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper .unit { font-size: 11px; color: var(--muted); margin: 0 2px 0 -4px; }
+.stepper:focus-within { border-color: var(--accent-line); }
+.seg { display: inline-flex; height: 36px; padding: 3px; gap: 2px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--field); flex: none; }
+.seg button { min-width: 30px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: background .15s, color .15s, box-shadow .15s; white-space: nowrap; }
+.seg button:hover { color: var(--text); }
+.seg button.on { background: var(--accent-soft); color: #fff; box-shadow: inset 0 0 0 1px var(--accent-line); }
+.seg.full { display: flex; width: 100%; height: 40px; }
+.seg.full button { flex: 1; padding: 0 6px; }
+.select { position: relative; display: inline-flex; align-items: center; height: 36px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--field); padding-left: 9px; color: var(--muted); cursor: pointer; flex: none; }
+.select select { appearance: none; -webkit-appearance: none; border: 0; background: none; color: var(--text); font-size: 13px; font-weight: 600; height: 100%; padding: 0 24px 0 6px; cursor: pointer; outline: none; }
+.select::after { content: ""; position: absolute; right: 10px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.select option { background: #151821; }
+.range { display: flex; align-items: center; gap: 12px; }
+.range output { min-width: 40px; text-align: right; color: var(--text-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 150px; height: 4px; border-radius: 4px; outline: none; cursor: pointer; background: linear-gradient(90deg, #a78bfa 0, #7c83ff var(--p, 50%), rgba(255, 255, 255, .13) var(--p, 50%)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .55), 0 0 0 4px rgba(139, 123, 255, .28); }
+input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .55), 0 0 0 4px rgba(139, 123, 255, .28); }
+.btn { height: 34px; padding: 0 13px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--card-2); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; transition: background .15s, border-color .15s, transform .1s; }
+.btn:hover { background: var(--card-3); border-color: var(--line-3); }
+.btn:active { transform: scale(.98); }
+.btn.sm { height: 30px; padding: 0 10px; font-size: 12.5px; border-radius: 9px; }
+.btn.primary { border: 0; background: var(--grad); color: #fff; box-shadow: 0 8px 22px -8px rgba(124, 131, 255, .85); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.on { border-color: var(--accent-line); background: var(--accent-soft); }
+.icon-btn { width: 30px; height: 30px; flex: none; border: 0; border-radius: 9px; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; transition: background .15s, color .15s; }
+.icon-btn:hover { color: var(--text); background: var(--card-3); }
+.icon-btn.danger:hover { color: var(--bad); background: rgba(255, 107, 107, .12); }
+.icon-btn:disabled { opacity: .35; cursor: default; background: none; }
+
+/* ------------------------------------------------------------------ text blocks */
+.block { border: 1px solid var(--line); background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .015)); border-radius: var(--r-md); padding: 10px 12px 12px; margin-bottom: 10px; transition: border-color .2s, box-shadow .2s; animation: blockIn .28s ease both; }
+@keyframes blockIn { from { opacity: 0; transform: translateY(-4px) scale(.99); } }
+.block:focus-within { border-color: var(--accent-line); box-shadow: 0 0 0 4px rgba(139, 123, 255, .08); }
+.block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; min-height: 30px; }
+.block-num { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); padding-left: 2px; }
+.mini-actions { display: flex; gap: 2px; margin-right: -4px; }
+.bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bar + .bar { margin-top: 6px; }
+.font-btn { flex: 1 1 150px; min-width: 0; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 12px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--field); cursor: pointer; overflow: hidden; }
+.font-btn:hover { border-color: var(--line-3); }
+.font-btn img { height: 19px; max-width: calc(100% - 22px); object-fit: contain; object-position: left center; }
+.font-btn .chev { margin-left: auto; color: var(--muted); display: flex; }
+.seg.style button { font-size: 14.5px; min-width: 32px; }
+.seg.style .b { font-weight: 800; }
+.seg.style .i { font-style: italic; font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
+.seg.style .u { text-decoration: underline; text-underline-offset: 2px; }
+.seg.style .s { text-decoration: line-through; }
+textarea.text { display: block; width: 100%; margin-top: 8px; min-height: 66px; resize: vertical; border-radius: 10px; border: 1px solid var(--line-2); background: rgba(0, 0, 0, .32); padding: 10px 12px; font-size: 18px; line-height: 1.3; outline: none; transition: border-color .15s; }
+textarea.text:focus { border-color: var(--accent-line); }
+textarea.text::placeholder { color: var(--dim); }
+.add-line { width: 100%; height: 46px; border-radius: var(--r-md); border: 1.5px dashed var(--line-3); background: none; color: var(--muted); font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: .2s; }
+.add-line:hover { border-color: var(--accent-line); color: var(--text); background: var(--accent-soft); }
+
+/* ------------------------------------------------------------------ font picker */
+.fontpop { position: fixed; z-index: 70; width: 330px; max-height: 440px; display: flex; flex-direction: column; background: rgba(18, 20, 28, .97); border: 1px solid var(--line-2); border-radius: 16px; box-shadow: 0 30px 80px -16px rgba(0, 0, 0, .95); backdrop-filter: blur(20px); overflow: hidden; opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top left; pointer-events: none; transition: opacity .16s, transform .16s; }
+.fontpop.open { opacity: 1; transform: none; pointer-events: auto; }
+.fp-search { display: flex; align-items: center; gap: 9px; padding: 0 14px; height: 48px; border-bottom: 1px solid var(--line); color: var(--muted); flex: none; }
+.fp-search input { flex: 1; border: 0; background: none; outline: none; font-size: 14px; color: var(--text); }
+.fp-list { overflow-y: auto; padding: 6px; }
+.fp-group { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 10px 10px 5px; }
+.fp-row { width: 100%; height: 42px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 9px; background: none; cursor: pointer; text-align: left; }
+.fp-row:hover, .fp-row:focus-visible { background: var(--card-3); outline: none; }
+.fp-row.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.fp-row img { height: 21px; max-width: 190px; object-fit: contain; object-position: left center; }
+.fp-row .fp-name { margin-left: auto; font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.fp-empty { padding: 24px; text-align: center; color: var(--muted); }
+
+/* ------------------------------------------------------------------ upload */
+.drop { position: relative; margin-top: 14px; padding: 36px 18px 32px; text-align: center; cursor: pointer; border-radius: var(--r-lg); border: 1.5px dashed var(--line-3); background: radial-gradient(420px 170px at 50% 0%, rgba(139, 123, 255, .14), transparent 70%), rgba(255, 255, 255, .02); transition: border-color .2s, background-color .2s, transform .2s; outline: none; }
+.drop:hover, .drop:focus-visible, body.dragging .drop { border-color: var(--accent); background-color: rgba(139, 123, 255, .08); transform: translateY(-1px); }
+.drop-ico { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 17px; display: grid; place-items: center; background: var(--grad); color: #fff; box-shadow: 0 12px 30px -8px rgba(124, 131, 255, .75); animation: bob 3s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-4px); } }
+.drop b { display: block; font-size: 16px; margin-bottom: 4px; }
+.drop span { color: var(--muted); font-size: 13px; }
+.filecard { position: relative; margin-top: 14px; display: flex; gap: 14px; align-items: flex-start; padding: 12px; border-radius: var(--r-md); border: 1px solid var(--line-2); background: var(--card-2); }
+.filecard.loading { opacity: .6; pointer-events: none; }
+.fc-thumb { width: 64px; height: 84px; flex: none; border-radius: 7px; background: #fff; display: grid; place-items: center; overflow: hidden; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .8); }
+.fc-thumb img { max-width: 100%; max-height: 100%; }
+.fc-info { flex: 1; min-width: 0; }
+.fc-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 24px; }
+.fc-meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.fc-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.filecard > .icon-btn { position: absolute; top: 8px; right: 8px; }
+
+/* ------------------------------------------------------------------ history */
+.hist { display: flex; gap: 12px; align-items: flex-start; padding: 12px; margin-bottom: 8px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--card); transition: background .2s, border-color .2s, opacity .2s, transform .2s; animation: blockIn .3s ease both; }
+.hist:hover { background: var(--card-2); border-color: var(--line-2); }
+.hist.removing { opacity: 0; transform: translateX(-12px); }
+.hist-thumb { position: relative; width: 74px; max-height: 140px; flex: none; align-self: flex-start; padding: 0; border: 0; border-radius: 3px; background: #fff; overflow: hidden; cursor: zoom-in; box-shadow: 0 8px 18px -8px rgba(0, 0, 0, .85); transition: box-shadow .15s, transform .15s; }
+.hist-thumb:hover, .hist-thumb:focus-visible { outline: none; transform: translateY(-1px); box-shadow: 0 0 0 2px var(--accent-line), 0 10px 22px -8px rgba(0, 0, 0, .9); }
+.hist-thumb .mini { position: relative; display: block; width: 100%; }
+.hist-thumb img { position: absolute; display: block; }
+.hist-thumb.long::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 30px; background: linear-gradient(rgba(255, 255, 255, 0), #fff); }
+.hist-badge { position: absolute; right: 3px; bottom: 3px; z-index: 1; padding: 1px 6px; border-radius: 99px; font-size: 10.5px; font-weight: 800; color: #fff; background: rgba(20, 22, 30, .85); }
+.hist-info { flex: 1; min-width: 0; }
+.hist-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.hist-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.hist-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 44px 20px; color: var(--muted); }
+.hist-empty b { color: var(--text); font-size: 15px; margin-top: 6px; }
+.hist-empty span { font-size: 13px; max-width: 280px; }
+
+/* ------------------------------------------------------------------ stage */
+.stage { position: relative; }
+.stage-top { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); flex: none; min-height: 68px; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.dims { font-weight: 650; font-size: 15.5px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stage-tools { margin-left: auto; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.warn-chip { display: inline-flex; align-items: center; gap: 7px; max-width: 420px; padding: 6px 11px; border-radius: 10px; font-size: 12.5px; color: var(--warn); background: rgba(255, 192, 70, .09); border: 1px solid rgba(255, 192, 70, .25); }
+.alert-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 480px; padding: 7px 12px; border-radius: 10px; font-size: 12.5px; color: #ffdcdc; background: rgba(255, 107, 107, .13); border: 1px solid rgba(255, 107, 107, .38); animation: paneIn .3s ease both; }
+.alert-chip svg { color: var(--bad); flex: none; }
+.alert-chip b { font-weight: 650; color: #fff; }
+.rig.no-media .strip { opacity: .28; filter: grayscale(1); }
+.roll-mobile { display: none; }
+.hist-roll { color: var(--warn); }
+.tool { width: 38px; height: 38px; border-radius: 11px; border: 1px solid var(--line-2); background: var(--card-2); color: var(--text-2); display: grid; place-items: center; cursor: pointer; transition: .15s; flex: none; }
+.tool:hover { background: var(--card-3); color: var(--text); }
+.tool:disabled { opacity: .35; cursor: default; }
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .22); border-top-color: #fff; animation: spin .7s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.busy-dot { width: 12px; height: 12px; border-width: 1.5px; opacity: 0; transition: opacity .2s; border-top-color: var(--accent); }
+.stage.busy .busy-dot { opacity: 1; }
+
+.scene { position: relative; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 40px 24px 70px;
+  background:
+    radial-gradient(520px 340px at 50% 30%, rgba(124, 131, 255, .17), transparent 70%),
+    radial-gradient(circle, rgba(255, 255, 255, .05) 1px, transparent 1.4px) 0 0 / 22px 22px; }
+.rig { position: relative; width: min(100%, 620px); margin: 0 auto; animation: rigIn 1s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes rigIn { from { opacity: 0; transform: translateY(22px) scale(.97); } }
+.printer-box { position: relative; z-index: 1; }
+.printer { display: block; width: 100%; height: auto; overflow: visible; }
+.rig.printing .printer-box { animation: hum .1s linear infinite; }
+@keyframes hum { 25% { transform: translate(.5px, -.3px); } 50% { transform: translate(0, .35px); } 75% { transform: translate(-.5px, 0); } }
+.p-led { fill: #2a2e37; transition: fill .3s; }
+.p-led-glow { fill: transparent; transition: fill .3s; }
+.rig[data-state=ready] .p-led, .rig[data-state=ready] .p-led-glow { fill: #3ee08f; }
+.rig[data-state=error] .p-led, .rig[data-state=error] .p-led-glow { fill: #ff5b5b; animation: blink 1.2s infinite; }
+.rig[data-state=printing] .p-led, .rig[data-state=printing] .p-led-glow, .rig.printing .p-led, .rig.printing .p-led-glow { fill: #ffb43a; animation: blink .7s infinite; }
+
+/* the label hangs out of the exit slot: feed's top edge sits on the slot line (y=282 of 500) */
+.feed { position: relative; z-index: 2; width: 60%; margin: -34.0625% auto 0; clip-path: inset(0 -70% -100000px -70%); }
+.feed::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18px; z-index: 5; pointer-events: none; background: linear-gradient(rgba(0, 0, 0, .62), rgba(0, 0, 0, 0)); }
+.strip { position: relative; }
+.strip.printout { position: absolute; left: 0; right: 0; top: 0; transform-origin: 50% 0; z-index: 3; }
+.paper { position: relative; width: 100%; background: #fff; overflow: hidden; cursor: zoom-in; transition: height .32s cubic-bezier(.3, .9, .3, 1); box-shadow: 0 34px 50px -26px rgba(0, 0, 0, .95), 0 2px 0 rgba(0, 0, 0, .25); }
+.paper.instant { transition: none; }
+.paper img { position: absolute; display: block; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.paper::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(0, 0, 0, .05), transparent 5%, transparent 95%, rgba(0, 0, 0, .06)); }
+.paper.joined { box-shadow: 0 34px 50px -26px rgba(0, 0, 0, .95); }
+.paper.joined::before { content: ""; position: absolute; left: 0; right: 0; top: 0; border-top: 1.5px dashed rgba(0, 0, 0, .22); z-index: 2; }
+.paper.gap { margin-top: 10px; }
+.paper.excluded img { opacity: .14; }
+.paper.excluded { background: repeating-linear-gradient(-45deg, #fff 0 10px, #f1f2f5 10px 20px); }
+.page-chip { position: absolute; top: 8px; right: 8px; z-index: 3; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px 0 8px; border-radius: 99px; border: 0; cursor: pointer; font-size: 12px; font-weight: 700; color: #fff; background: rgba(20, 22, 30, .82); box-shadow: 0 4px 12px rgba(0, 0, 0, .3); }
+.paper.excluded .page-chip { background: #e9eaee; color: #555b68; }
+.more-pages { margin-top: 12px; text-align: center; font-size: 12.5px; color: var(--muted); }
+.head { position: absolute; left: -3%; right: -3%; top: 0; height: 3px; z-index: 6; pointer-events: none; opacity: 0; background: linear-gradient(90deg, transparent, #9fe8ff 15%, #fff 50%, #9fe8ff 85%, transparent); box-shadow: 0 0 18px 5px rgba(94, 216, 255, .5); transition: opacity .25s; }
+.rig.feeding .head { opacity: 1; animation: headPulse .45s ease-in-out infinite alternate; }
+@keyframes headPulse { to { box-shadow: 0 0 26px 8px rgba(94, 216, 255, .7); } }
+.cut { position: absolute; left: -4%; right: -4%; top: 3px; height: 3px; z-index: 7; pointer-events: none; transform: scaleX(0); transform-origin: left center; background: #fff; box-shadow: 0 0 14px 3px rgba(255, 255, 255, .85); }
+.scissors { position: absolute; left: -10%; top: -11px; z-index: 8; color: #fff; opacity: 0; pointer-events: none; filter: drop-shadow(0 0 8px rgba(94, 216, 255, .95)); }
+.copies-badge { position: absolute; top: 14px; right: -16px; z-index: 6; padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 800; color: #fff; background: var(--grad); box-shadow: 0 6px 18px -4px rgba(124, 131, 255, .9); pointer-events: none; animation: pop .3s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } }
+.empty { display: flex; align-items: center; gap: 10px; width: max-content; max-width: 100%; margin: 26px auto 0; padding: 12px 18px; border-radius: 14px; color: var(--text-2); font-size: 14px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line-2); backdrop-filter: blur(8px); animation: paneIn .4s ease both; }
+.empty.error { color: var(--bad); border-color: rgba(255, 107, 107, .3); background: rgba(255, 107, 107, .06); }
+.empty i { color: var(--accent); }
+.empty.error i { color: var(--bad); }
+
+/* ------------------------------------------------------------------ dock */
+.dock { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-top: 1px solid var(--line); background: rgba(9, 10, 15, .55); flex: none; flex-wrap: wrap; }
+.copies { display: flex; align-items: center; gap: 10px; }
+.dock .lbl { font-size: 13px; color: var(--muted); }
+.usage { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.print-btn { position: relative; margin-left: auto; height: 52px; min-width: 150px; padding: 0 26px; border: 0; border-radius: 15px; overflow: hidden; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 16px; font-weight: 700; letter-spacing: -.01em; background: var(--grad); box-shadow: 0 14px 36px -12px rgba(124, 131, 255, .95), inset 0 1px 0 rgba(255, 255, 255, .35); transition: transform .15s, box-shadow .2s, filter .2s, background .3s; }
+.print-btn::before { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .38) 50%, transparent 70%); transform: translateX(-120%); transition: transform .8s; }
+.print-btn:hover:not(:disabled)::before { transform: translateX(120%); }
+.print-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 18px 44px -12px rgba(124, 131, 255, 1), inset 0 1px 0 rgba(255, 255, 255, .35); }
+.print-btn:active:not(:disabled) { transform: translateY(1px) scale(.99); }
+.print-btn:disabled { cursor: not-allowed; filter: saturate(.35) brightness(.6); box-shadow: none; }
+.print-btn.busy { filter: none; cursor: progress; }
+.print-btn.done { background: linear-gradient(135deg, #34d399, #10b981); box-shadow: 0 14px 36px -12px rgba(16, 185, 129, .9); filter: none; }
+.print-btn .pb-ico { display: grid; place-items: center; }
+.print-btn kbd { font: 600 11px var(--font); padding: 2px 6px; border-radius: 6px; background: rgba(255, 255, 255, .18); color: rgba(255, 255, 255, .9); margin-left: 2px; }
+@media (pointer: coarse) { .print-btn kbd { display: none; } }
+
+/* ------------------------------------------------------------------ toasts & modals */
+.toasts { position: fixed; top: 78px; right: 20px; z-index: 80; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; min-width: 280px; max-width: min(440px, calc(100vw - 32px)); padding: 12px 10px 12px 12px; border-radius: 15px; background: rgba(20, 22, 31, .94); border: 1px solid var(--line-2); backdrop-filter: blur(18px); box-shadow: 0 24px 60px -14px rgba(0, 0, 0, .9); animation: toastIn .4s cubic-bezier(.2, 1.2, .3, 1) both; }
+.toast.out { animation: toastOut .25s ease forwards; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-10px) scale(.96); } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+.t-ico { width: 32px; height: 32px; flex: none; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.toast.ok .t-ico { background: rgba(62, 224, 143, .14); color: var(--ok); }
+.toast.bad .t-ico { background: rgba(255, 107, 107, .14); color: var(--bad); }
+.t-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.t-body b { font-weight: 650; font-size: 14px; }
+.t-body span { color: var(--muted); font-size: 12.5px; }
+.modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(3, 4, 8, .74); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); opacity: 0; pointer-events: none; transition: opacity .22s; }
+.modal.open { opacity: 1; pointer-events: auto; }
+.modal-card { width: min(820px, 100%); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); display: flex; flex-direction: column; background: #10121a; border: 1px solid var(--line-2); border-radius: 22px; box-shadow: 0 40px 120px -20px rgba(0, 0, 0, .95); transform: translateY(14px) scale(.98); transition: transform .28s cubic-bezier(.2, 1, .3, 1); overflow: hidden; }
+.modal-card.wide { width: min(1000px, 100%); }
+.modal.open .modal-card { transform: none; }
+.modal-head { display: flex; align-items: flex-start; gap: 12px; padding: 18px 18px 16px 22px; border-bottom: 1px solid var(--line); }
+.modal-head h3 { margin: 0; font-size: 17px; font-weight: 650; }
+.modal-head p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+.modal-head .icon-btn { margin-left: auto; }
+.modal-body { overflow: auto; padding: 24px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--line); }
+.zoom-card { height: calc(100vh - 40px); height: calc(100dvh - 40px); }
+.zoom-head { flex-wrap: wrap; align-items: center; row-gap: 12px; }
+.zoom-head .icon-btn { margin-left: 0; }
+.zoom-title { flex: 1 1 220px; min-width: 0; }
+.zoom-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.zoom-step output { min-width: 56px; text-align: center; font-weight: 650; font-size: 13px; font-variant-numeric: tabular-nums; }
+.zoom-body { flex: 1; min-height: 0; padding: 30px; cursor: grab; background: radial-gradient(circle, rgba(255, 255, 255, .05) 1px, transparent 1.4px) 0 0 / 22px 22px; }
+.zoom-body.panning { cursor: grabbing; user-select: none; }
+.zoom-inner { width: max-content; min-width: 100%; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.zoom-item { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.zoom-hint { padding: 10px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--dim); text-align: center; flex: none; }
+@media (pointer: coarse) { .zoom-hint { display: none; } }
+.paper.zoomed { cursor: inherit; border-radius: 3px; box-shadow: 0 30px 70px -20px rgba(0, 0, 0, .9); flex: none; }
+.zoom-cap { font-size: 12.5px; color: var(--muted); }
+.crop-body { display: grid; place-items: center; background: #0b0c12; }
+.crop-area { position: relative; overflow: hidden; touch-action: none; user-select: none; cursor: crosshair; line-height: 0; border-radius: 4px; }
+.crop-area img { display: block; max-width: 100%; max-height: calc(100vh - 260px); max-height: calc(100dvh - 260px); background: #fff; pointer-events: none; }
+.crop-box { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(6, 7, 12, .66); outline: 1px dashed rgba(139, 123, 255, .9); outline-offset: 3px; cursor: move; }
+.crop-box .h { position: absolute; width: 16px; height: 16px; border-radius: 5px; background: #fff; border: 2.5px solid var(--accent); }
+.h[data-h=nw] { left: -9px; top: -9px; cursor: nwse-resize; }
+.h[data-h=ne] { right: -9px; top: -9px; cursor: nesw-resize; }
+.h[data-h=sw] { left: -9px; bottom: -9px; cursor: nesw-resize; }
+.h[data-h=se] { right: -9px; bottom: -9px; cursor: nwse-resize; }
+.drag-overlay { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; background: rgba(7, 8, 12, .7); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity .2s; }
+body.dragging .drag-overlay { opacity: 1; }
+.drag-overlay > div { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 46px 70px; border-radius: 26px; border: 2px dashed var(--accent); background: rgba(139, 123, 255, .1); color: var(--muted); }
+.drag-overlay b { color: var(--text); font-size: 20px; }
+.drag-overlay i { color: var(--accent); margin-bottom: 6px; }
+
+/* ------------------------------------------------------------------ responsive */
+@media (max-width: 1180px) { .app { grid-template-columns: 380px minmax(0, 1fr); } }
+@media (max-width: 860px) {
+  body { overflow: auto; }
+  .app { display: flex; flex-direction: column; height: auto; padding: 12px 12px 118px; gap: 12px; }
+  .panel { overflow: visible; }
+  .stage { order: -1; backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(15, 17, 24, .92); }
+  .panel-scroll { overflow: visible; padding-bottom: 16px; }
+  .scene { max-height: 56vh; min-height: 280px; padding: 26px 14px 40px; border-radius: 0 0 var(--r-lg) var(--r-lg); }
+  .dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; gap: 12px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); border: 1px solid var(--line-2); border-bottom: 0; border-radius: 20px 20px 0 0; background: rgba(14, 16, 23, .94); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 -12px 40px rgba(0, 0, 0, .5); }
+  .usage { display: none; }
+  .print-btn { min-width: 0; padding: 0 22px; }
+  .topbar { padding: 0 14px; }
+  .pill.roll { display: none; }
+  .toasts { top: 72px; left: 12px; right: 12px; align-items: stretch; }
+  .toast { max-width: none; }
+  .fontpop { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto !important; max-height: 72vh !important; transform-origin: bottom center; }
+  .warn-chip { max-width: 190px; }
+  .alert-chip { max-width: 240px; }
+  .roll-mobile { display: inline; text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--text-2); }
+}
+@media (max-width: 420px) {
+  .dock .lbl { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="labelprinter">
+    <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+      <defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset=".5" stop-color="#7c83ff"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs>
+      <rect x="2" y="2" width="36" height="36" rx="11" fill="url(#bm)"/>
+      <rect x="9" y="11" width="22" height="9" rx="3" fill="#0b0d14" opacity=".92"/>
+      <rect x="12" y="17" width="16" height="15" rx="1.5" fill="#fff"/>
+      <path d="M15 22.5h10M15 26.5h6.5" stroke="#7c83ff" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span>label<b>printer</b></span>
+  </a>
+  <div class="top-right">
+    <span class="pill roll">Brother QL-1100 <span class="muted">·</span> <span id="rollName">checking roll…</span></span>
+    <span class="pill status" id="status" data-state="unknown" role="status"><span class="led"></span><span id="statusText">Connecting…</span></span>
+  </div>
+</header>
+
+<main class="app">
+  <!-- ============================================================ editor -->
+  <aside class="panel editor">
+    <nav class="tabs" id="tabs" role="tablist">
+      <span class="ind"></span>
+      <button data-tab="text" role="tab"><i data-i="text"></i>Text</button>
+      <button data-tab="file" role="tab"><i data-i="upload"></i>Upload</button>
+      <button data-tab="history" role="tab"><i data-i="history"></i>History</button>
+    </nav>
+    <div class="panel-scroll" id="editorScroll">
+
+      <section class="pane" id="pane-text">
+        <div class="sect"><h3>Your text</h3><button class="link" id="resetText" type="button"><i data-i="reset" data-s="14"></i>Reset</button></div>
+        <div id="blocks"></div>
+        <button class="add-line" id="addBlock" type="button"><i data-i="plus"></i>Add another text</button>
+
+        <div class="sect"><h3>Layout</h3></div>
+        <div class="card">
+          <div class="row stack">
+            <div class="seg full" id="orient">
+              <button type="button" data-v="horizontal"><i data-i="across"></i>Across the label</button>
+              <button type="button" data-v="vertical"><i data-i="along"></i>Along the length</button>
+            </div>
+          </div>
+          <label class="row"><span class="row-text"><b>Auto-size text</b><small>Scale the text to fill the label</small></span><span class="switch"><input type="checkbox" id="fit"><span class="track"></span></span></label>
+          <div class="row" id="fixedRow">
+            <label class="row-text" for="fixedLen"><b>Fixed length</b><small id="fixedHint">Off: the label is exactly as long as the text</small></label>
+            <div class="row-ctl">
+              <div class="stepper" id="lenStep" hidden><button type="button" data-d="-1" aria-label="Shorter">−</button><input type="number" inputmode="decimal" aria-label="Label length"><span class="unit">mm</span><button type="button" data-d="1" aria-label="Longer">+</button></div>
+              <span class="switch"><input type="checkbox" id="fixedLen"><span class="track"></span></span>
+            </div>
+          </div>
+          <div class="row"><span class="row-text"><b>Padding</b><small>Space at the sides of the label</small></span>
+            <div class="stepper" id="tPad"><button type="button" data-d="-1" aria-label="Less">−</button><input type="number" inputmode="decimal" aria-label="Padding"><span class="unit">mm</span><button type="button" data-d="1" aria-label="More">+</button></div></div>
+          <label class="row"><span class="row-text"><b>Border</b><small>Rounded frame around the label</small></span><span class="switch"><input type="checkbox" id="tBorder"><span class="track"></span></span></label>
+          <label class="row"><span class="row-text"><b>White on black</b><small>Inverts the whole label</small></span><span class="switch"><input type="checkbox" id="tInvert"><span class="track"></span></span></label>
+        </div>
+      </section>
+
+      <section class="pane" id="pane-file" hidden>
+        <input type="file" id="fileInput" accept=".pdf,application/pdf,image/*" hidden>
+        <div class="drop" id="drop" role="button" tabindex="0">
+          <div class="drop-ico"><i data-i="upload" data-s="26"></i></div>
+          <b>Drop your shipping label</b>
+          <span>PDF or image · click to browse · or paste it</span>
+        </div>
+        <div class="filecard" id="fileCard" hidden>
+          <div class="fc-thumb"><img id="fcThumb" alt=""></div>
+          <div class="fc-info">
+            <div class="fc-name" id="fcName"></div>
+            <div class="fc-meta" id="fcMeta"></div>
+            <div class="fc-actions">
+              <button class="btn sm" id="cropBtn" type="button"><i data-i="crop" data-s="14"></i><span>Crop</span></button>
+              <button class="btn sm" id="replaceBtn" type="button"><i data-i="upload" data-s="14"></i>Replace</button>
+            </div>
+          </div>
+          <button class="icon-btn" id="removeFile" type="button" title="Remove file"><i data-i="x"></i></button>
+        </div>
+
+        <div class="sect"><h3>Rotation</h3></div>
+        <div class="seg full" id="rotate">
+          <button type="button" data-v="auto" title="Turns the label when that makes it fit the roll better">Auto</button>
+          <button type="button" data-v="0">0°</button><button type="button" data-v="90">90°</button><button type="button" data-v="180">180°</button><button type="button" data-v="270">270°</button>
+        </div>
+
+        <div class="sect"><h3>Size</h3></div>
+        <div class="seg full" id="sizeMode">
+          <button type="button" data-v="fit" title="Scale to fill the 4 inch width">Fit width</button>
+          <button type="button" data-v="actual" title="Print at the size in the file">Actual size</button>
+          <button type="button" data-v="percent">Custom</button>
+        </div>
+        <div class="card mt" id="sizeCard">
+          <div class="row" id="pctRow"><span class="row-text"><b>Width</b><small>Of the 4 inch print area</small></span><div class="range"><input type="range" id="pct" min="10" max="100" aria-label="Width"><output id="pctVal"></output></div></div>
+          <div class="row" id="alignRow"><span class="row-text"><b>Position</b></span>
+            <div class="seg" id="fAlign">
+              <button type="button" data-v="left" title="Left"><i data-i="alignL"></i></button>
+              <button type="button" data-v="center" title="Center"><i data-i="alignC"></i></button>
+              <button type="button" data-v="right" title="Right"><i data-i="alignR"></i></button>
+            </div></div>
+        </div>
+
+        <div class="sect"><h3>Clean-up</h3></div>
+        <div class="card">
+          <label class="row"><span class="row-text"><b>Trim white space</b><small>Removes empty margins around the label</small></span><span class="switch"><input type="checkbox" id="trim"><span class="track"></span></span></label>
+          <label class="row"><span class="row-text"><b>Photo mode</b><small>Dithers greys - for pictures, not labels</small></span><span class="switch"><input type="checkbox" id="dither"><span class="track"></span></span></label>
+          <div class="row"><span class="row-text"><b>Darkness</b><small>Raise if barcodes print faint</small></span><div class="range"><input type="range" id="dark" min="10" max="90" aria-label="Darkness"><output id="darkVal"></output></div></div>
+        </div>
+
+        <div class="sect"><h3>Finish</h3></div>
+        <div class="card">
+          <div class="row"><span class="row-text"><b>Padding</b><small>Space around the label</small></span>
+            <div class="stepper" id="fPad"><button type="button" data-d="-1" aria-label="Less">−</button><input type="number" inputmode="decimal" aria-label="Padding"><span class="unit">mm</span><button type="button" data-d="1" aria-label="More">+</button></div></div>
+          <label class="row"><span class="row-text"><b>Border</b></span><span class="switch"><input type="checkbox" id="fBorder"><span class="track"></span></span></label>
+          <label class="row"><span class="row-text"><b>Invert colours</b></span><span class="switch"><input type="checkbox" id="fInvert"><span class="track"></span></span></label>
+        </div>
+      </section>
+
+      <section class="pane" id="pane-history" hidden>
+        <div class="sect"><h3>Recent prints</h3><span class="sect-note" id="histCount"></span></div>
+        <div id="histList"></div>
+      </section>
+    </div>
+  </aside>
+
+  <!-- ============================================================ stage -->
+  <section class="panel stage" id="stage">
+    <div class="stage-top">
+      <div>
+        <div class="eyebrow">Live preview <span class="roll-mobile">· <span id="rollMobile"></span></span> <span class="spin busy-dot"></span></div>
+        <div class="dims" id="dims">&nbsp;</div>
+      </div>
+      <div class="stage-tools">
+        <span class="alert-chip" id="alert" role="alert" hidden></span>
+        <span class="warn-chip" id="warn" hidden></span>
+        <button class="tool" id="zoomBtn" type="button" title="Close-up view" disabled><i data-i="zoom" data-s="18"></i></button>
+      </div>
+    </div>
+
+    <div class="scene" id="scene">
+      <div class="rig" id="rig" data-state="unknown">
+        <div class="printer-box">
+          <svg class="printer" viewBox="0 0 640 500" aria-hidden="true">
+            <defs>
+              <linearGradient id="gShell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#edeff3"/><stop offset="1" stop-color="#c8ccd4"/></linearGradient>
+              <linearGradient id="gShellSide" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0b0d12" stop-opacity=".30"/><stop offset=".07" stop-color="#0b0d12" stop-opacity="0"/><stop offset=".93" stop-color="#0b0d12" stop-opacity="0"/><stop offset="1" stop-color="#0b0d12" stop-opacity=".34"/></linearGradient>
+              <linearGradient id="gBlack" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d414b"/><stop offset=".13" stop-color="#1f2228"/><stop offset=".45" stop-color="#121418"/><stop offset="1" stop-color="#07080a"/></linearGradient>
+              <linearGradient id="gBlackSide" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".08"/><stop offset=".08" stop-color="#fff" stop-opacity="0"/><stop offset=".92" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".06"/></linearGradient>
+              <linearGradient id="gGloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".32"/><stop offset=".4" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+              <linearGradient id="gSlot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000"/><stop offset=".55" stop-color="#040405"/><stop offset="1" stop-color="#16181d"/></linearGradient>
+              <linearGradient id="gBtn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d3038"/><stop offset="1" stop-color="#111317"/></linearGradient>
+              <radialGradient id="gFloor" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity=".8"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+              <filter id="fGlow" x="-400%" y="-400%" width="900%" height="900%"><feGaussianBlur stdDeviation="3.5"/></filter>
+            </defs>
+            <ellipse cx="320" cy="474" rx="322" ry="28" fill="url(#gFloor)"/>
+            <!-- white shell -->
+            <rect x="26" y="20" width="588" height="452" rx="66" fill="url(#gShell)"/>
+            <rect x="26" y="20" width="588" height="452" rx="66" fill="url(#gShellSide)"/>
+            <path d="M96 21.6 H544" stroke="#fff" stroke-width="1.6"/>
+            <path d="M27 414 H613" stroke="#0b0d12" stroke-opacity=".13" stroke-width="2"/>
+            <path d="M27 416.2 H613" stroke="#fff" stroke-opacity=".8"/>
+            <!-- black upper body -->
+            <path d="M58 372 V94 A58 58 0 0 1 116 36 H524 A58 58 0 0 1 582 94 V372 Z" fill="url(#gBlack)"/>
+            <path d="M58 372 V94 A58 58 0 0 1 116 36 H524 A58 58 0 0 1 582 94 V372 Z" fill="url(#gBlackSide)"/>
+            <path d="M58 196 V94 A58 58 0 0 1 116 36 H524 A58 58 0 0 1 582 94 V196 Z" fill="url(#gGloss)" opacity=".6"/>
+            <path d="M104 51 C220 39 420 39 536 51 L531 61 C420 51 220 51 109 61 Z" fill="#fff" opacity=".11"/>
+            <path d="M58 197 H582" stroke="#000" stroke-width="3" opacity=".75"/>
+            <path d="M58 200 H582" stroke="#fff" stroke-opacity=".09"/>
+            <!-- branding -->
+            <text x="320" y="118" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="40" letter-spacing="-1.2" fill="#f1f2f5">brother</text>
+            <text x="320" y="143" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="8.5" letter-spacing="2.6" fill="#b9bdc6">LABEL PRINTER</text>
+            <text x="320" y="164" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" letter-spacing="1.4" fill="#e7e9ee">QL-1100</text>
+            <g transform="translate(90 150)"><rect width="30" height="22" rx="3" fill="none" stroke="#e7e9ee" stroke-width="1.4"/><text x="15" y="12.6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="9.5" fill="#e7e9ee">DK</text><text x="15" y="19" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="4.6" letter-spacing=".6" fill="#e7e9ee">ROLLS</text></g>
+            <!-- status LEDs (the power LED mirrors the real printer) -->
+            <circle class="p-led-glow" cx="230" cy="209" r="6" filter="url(#fGlow)"/>
+            <circle class="p-led" cx="230" cy="209" r="2.8"/>
+            <circle cx="410" cy="209" r="2.8" fill="#24272e"/>
+            <!-- buttons: power, feed, cut, Editor Lite -->
+            <g transform="translate(230 233)"><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><path d="M-3.6 -3.8 A6 6 0 1 0 3.6 -3.8" fill="none" stroke="#e9ebef" stroke-width="1.7" stroke-linecap="round"/><path d="M0 -6.6 V-0.6" stroke="#e9ebef" stroke-width="1.7" stroke-linecap="round"/></g>
+            <g transform="translate(290 233)"><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><path d="M-6 -6 V4 M-8.6 1.6 L-6 4.4 L-3.4 1.6" stroke="#e9ebef" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.5 -6 H5.5 L8 -3.5 V6 H-0.5 Z" fill="none" stroke="#e9ebef" stroke-width="1.4" stroke-linejoin="round"/></g>
+            <g transform="translate(350 233)"><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><circle cx="-5" cy="-3.6" r="2.4" fill="none" stroke="#e9ebef" stroke-width="1.4"/><circle cx="-5" cy="3.6" r="2.4" fill="none" stroke="#e9ebef" stroke-width="1.4"/><path d="M-3 -2.2 L7 4.4 M-3 2.2 L7 -4.4" stroke="#e9ebef" stroke-width="1.4" stroke-linecap="round"/></g>
+            <g transform="translate(410 233)"><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><text y="-1" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="6.6" fill="#e9ebef">Editor</text><text y="7" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="6.6" fill="#e9ebef">Lite</text></g>
+            <!-- label exit slot -->
+            <rect x="106" y="262" width="428" height="96" rx="12" fill="url(#gSlot)"/>
+            <rect x="106" y="262" width="428" height="96" rx="12" fill="none" stroke="#000" stroke-width="2"/>
+            <path d="M118 263.6 H522" stroke="#fff" stroke-opacity=".1"/>
+            <g fill="#d6d9df" opacity=".5"><circle cx="146" cy="273" r="1.5"/><circle cx="196" cy="273" r="1.5"/><circle cx="246" cy="273" r="1.5"/><circle cx="296" cy="273" r="1.5"/><circle cx="344" cy="273" r="1.5"/><circle cx="394" cy="273" r="1.5"/><circle cx="444" cy="273" r="1.5"/><circle cx="494" cy="273" r="1.5"/></g>
+            <g stroke="#fff" stroke-opacity=".055" stroke-width="2"><path d="M150 300 V352"/><path d="M192 300 V352"/><path d="M234 300 V352"/><path d="M276 300 V352"/><path d="M318 300 V352"/><path d="M360 300 V352"/><path d="M402 300 V352"/><path d="M444 300 V352"/><path d="M486 300 V352"/></g>
+            <path d="M110 356 H530" stroke="#fff" stroke-opacity=".12"/>
+            <path d="M58 371 H582" stroke="#fff" stroke-opacity=".08"/>
+          </svg>
+        </div>
+        <div class="feed" id="feed">
+          <div class="strip" id="strip"></div>
+          <div class="head"></div>
+          <div class="cut" id="cutLine"></div>
+          <div class="scissors" id="scissors"><i data-i="scissors" data-s="24"></i></div>
+          <div class="copies-badge" id="copiesBadge" hidden></div>
+        </div>
+      </div>
+      <div class="empty" id="empty" hidden><i data-i="info" data-s="18"></i><span id="emptyText"></span></div>
+    </div>
+
+    <div class="dock">
+      <div class="copies"><span class="lbl">Copies</span>
+        <div class="stepper" id="copies"><button type="button" data-d="-1" aria-label="Fewer copies">−</button><input type="number" inputmode="numeric" aria-label="Copies"><button type="button" data-d="1" aria-label="More copies">+</button></div>
+      </div>
+      <span class="usage" id="usage"></span>
+      <button class="print-btn" id="printBtn" type="button" disabled><span class="pb-ico"><i data-i="printer" data-s="19"></i></span><span class="pb-txt">Print</span><kbd>Ctrl ⏎</kbd></button>
+    </div>
+  </section>
+</main>
+
+<!-- ============================================================ overlays -->
+<div class="modal" id="zoomModal" aria-hidden="true">
+  <div class="modal-card wide zoom-card" role="dialog" aria-label="Label close-up">
+    <div class="modal-head zoom-head">
+      <div class="zoom-title"><h3 id="zoomTitle">Close-up</h3><p id="zoomSub"></p></div>
+      <div class="zoom-tools">
+        <div class="seg" id="zoomPresets">
+          <button type="button" data-z="fit" title="Fit the window (0)">Fit</button>
+        </div>
+        <div class="stepper zoom-step"><button type="button" data-zd="-1" aria-label="Zoom out" title="Zoom out (-)">&minus;</button><output id="zoomPct">100%</output><button type="button" data-zd="1" aria-label="Zoom in" title="Zoom in (+)">+</button></div>
+      </div>
+      <button class="icon-btn" data-close type="button" aria-label="Close"><i data-i="x"></i></button>
+    </div>
+    <div class="modal-body zoom-body" id="zoomBody"><div class="zoom-inner" id="zoomInner"></div></div>
+    <div class="zoom-hint">Ctrl + scroll to zoom &middot; drag to move around &middot; double-click to zoom in or back out</div>
+  </div>
+</div>
+<div class="modal" id="cropModal" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-label="Crop">
+    <div class="modal-head"><div><h3>Crop to your label</h3><p>Drag a box around the part of the page you want to print. It applies to every page.</p></div><button class="icon-btn" data-close type="button" aria-label="Close"><i data-i="x"></i></button></div>
+    <div class="modal-body crop-body">
+      <div class="crop-area" id="cropArea"><img id="cropImg" alt="" draggable="false"><div class="crop-box" id="cropBox"><span class="h" data-h="nw"></span><span class="h" data-h="ne"></span><span class="h" data-h="sw"></span><span class="h" data-h="se"></span></div></div>
+    </div>
+    <div class="modal-foot"><button class="btn" id="cropReset" type="button">Whole page</button><button class="btn primary" id="cropApply" type="button"><i data-i="check" data-s="15"></i>Apply crop</button></div>
+  </div>
+</div>
+<div class="fontpop" id="fontPop" role="dialog" aria-label="Choose a font">
+  <div class="fp-search"><i data-i="search"></i><input id="fpSearch" placeholder="Search fonts" autocomplete="off" spellcheck="false"></div>
+  <div class="fp-list" id="fpList"></div>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="drag-overlay"><div><i data-i="upload" data-s="40"></i><b>Drop to upload</b><span>Shipping label PDF or image</span></div></div>
+
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+// The roll in the printer (from /api/status). Every size on the page comes from it, and each
+// preview / history label carries its own geometry: paper [w, h] and print area [x, y, w, h] in mm.
+let MEDIA = { id: "102", kind: "continuous", name: '102 mm continuous roll (4")', width_mm: 102, length_mm: 0, paper_w_mm: 101.6, print_w_mm: 98.55, min_length_mm: 25.5 };
+let STATUS = { state: "unknown", message: "", problem: null, blocking: false, detected: false };
+const legacyGeom = len => ({ paper: [101.6, len], area: [1.52, 2.96, 98.55, Math.max(0, len - 5.93)], shape: "rect", length_mm: len, label: `102 × ${len} mm` });
+const geomOf = pg => pg.paper ? pg : legacyGeom(pg.length_mm);       // labels from before roll detection were all 102 mm
+const readGeom = g => ({ ...g, paper: [g.paper[1], g.paper[0]], area: [g.paper[1] - g.area[1] - g.area[3], g.area[0], g.area[3], g.area[2]] });
+const shapeRadius = (g, s) => g.shape === "round" ? "50%" : g.shape === "die" ? 2.5 * s + "px" : "";
+let INFO = { fonts_popular: ["Arial"], fonts_other: [] };
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("lp_" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("lp_" + k, JSON.stringify(v)); } catch {} },
+};
+
+// ------------------------------------------------------------------ icons
+const P = {
+  text: '<path d="M4 7V5h16v2M12 5v14M9 19h6"/>',
+  upload: '<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
+  history: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5"/><path d="M3.5 3.5v5h5M12 7.5V12l3 2"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  printer: '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
+  zoom: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/>',
+  crop: '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+  scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/>',
+  alert: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>',
+  reset: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  across: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10M7 14h7"/>',
+  along: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M10 7v10M14 7v7"/>',
+  alignL: '<path d="M4 6h16M4 12h10M4 18h13"/>',
+  alignC: '<path d="M4 6h16M7 12h10M5.5 18h13"/>',
+  alignR: '<path d="M4 6h16M10 12h10M7 18h13"/>',
+  spacing: '<path d="M11 6h10M11 12h10M11 18h10M3 8l3-3 3 3M3 16l3 3 3-3M6 5v14"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+};
+const ic = (n, s = 16) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ""}</svg>`;
+const hydrate = (root = document) => $$("i[data-i]", root).forEach(el => { if (!el.firstChild) el.innerHTML = ic(el.dataset.i, +(el.dataset.s || 16)); });
+
+// ------------------------------------------------------------------ state (defaults match the original site)
+const DEF_BLOCK = () => ({ text: "", font: "Arial", size: 36, bold: false, italic: false, underline: false, strike: false, align: "center", line_spacing: 1.0 });
+const DEF_TEXT = () => ({ blocks: [Object.assign(DEF_BLOCK(), { text: "Label", bold: true, size: 48 })], orientation: "horizontal", fit: false, length_mm: 0, fixed_len: 50, padding_mm: 1.5, border: false, invert: false });
+const DEF_FILE = () => ({ rotate: "auto", size: "fit", percent: 60, align: "center", trim: true, dither: false, darkness: 50, padding_mm: 1, border: false, invert: false });
+const S = {
+  tab: store.get("tab", "text"),
+  text: Object.assign(DEF_TEXT(), store.get("text", {})),
+  file: Object.assign(DEF_FILE(), store.get("fileopts", {}), { id: null, name: "", pages: 0, auto: null, exclude: [], crop: null }),
+  copies: 1,
+};
+if (!["text", "file", "history"].includes(S.tab)) S.tab = "text";
+if (!Array.isArray(S.text.blocks) || !S.text.blocks.length) S.text.blocks = DEF_TEXT().blocks;
+S.mode = S.tab === "history" ? store.get("mode", "text") : S.tab;   // which design the preview & Print use
+const T = () => S.text, F = () => S.file;
+
+// ------------------------------------------------------------------ generic controls
+function bindSwitch(id, obj, key) {
+  const el = document.getElementById(id);
+  el.addEventListener("change", () => { obj()[key] = el.checked; changed(); });
+  const sync = () => { el.checked = !!obj()[key]; };
+  sync(); return sync;
+}
+function seg(el, obj, key, after) {
+  const btns = $$("button", el);
+  const sync = () => btns.forEach(b => b.classList.toggle("on", b.dataset.v === String(obj()[key])));
+  btns.forEach(b => b.addEventListener("click", () => { obj()[key] = b.dataset.v; sync(); if (after) after(); changed(); }));
+  sync(); return sync;
+}
+function stepper(el, { get, set, step = 1, min = 0, max = 999, dec = 1 }) {
+  const input = $("input", el);
+  const fmt = v => String(+(+v).toFixed(dec));
+  const put = v => { v = clamp(+(+v).toFixed(dec), min, max); set(v); input.value = fmt(v); };
+  input.addEventListener("input", () => { const v = parseFloat(input.value); if (!isNaN(v) && v >= min && v <= max) set(v); });
+  input.addEventListener("change", () => { const v = parseFloat(input.value); put(isNaN(v) ? get() : v); });
+  $$("button[data-d]", el).forEach(b => b.addEventListener("click", () => put(get() + (+b.dataset.d) * step)));
+  const sync = () => { input.value = fmt(get()); };
+  sync(); return sync;
+}
+function bindRange(id, outId, key, fmt) {
+  const el = document.getElementById(id), out = document.getElementById(outId);
+  const paint = () => { el.style.setProperty("--p", (el.value - el.min) / (el.max - el.min) * 100 + "%"); out.textContent = fmt(el.value); };
+  el.addEventListener("input", () => { F()[key] = +el.value; paint(); changed(); });
+  const sync = () => { el.value = F()[key]; paint(); };
+  sync(); return sync;
+}
+
+// ------------------------------------------------------------------ tabs
+const TABS = ["text", "file", "history"];
+function setTab(t, init) {
+  S.tab = t; store.set("tab", t);
+  $$("#tabs button").forEach(b => { const on = b.dataset.tab === t; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+  $("#tabs .ind").style.transform = `translateX(${TABS.indexOf(t) * 100}%)`;
+  TABS.forEach(x => { $("#pane-" + x).hidden = x !== t; });
+  closeFontPop();
+  if (!init) $("#editorScroll").scrollTop = 0;
+  if (t === "history") loadHistory();
+  else if (S.mode !== t) { S.mode = t; store.set("mode", t); if (!init) changed(true); }
+}
+$$("#tabs button").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+
+// ------------------------------------------------------------------ font picker (server renders each font name in its own font)
+const fontSrc = f => "/api/font-sample?f=" + encodeURIComponent(f);
+const FP = { anchor: null, onPick: null };
+function buildFontList() {
+  const row = f => `<button type="button" class="fp-row" data-f="${esc(f)}" title="${esc(f)}"><img loading="lazy" decoding="async" alt="" src="${fontSrc(f)}"><span class="fp-name">${esc(f)}</span></button>`;
+  const all = INFO.fonts_popular.length + INFO.fonts_other.length;
+  $("#fpList").innerHTML = `<div class="fp-group">Popular</div>${INFO.fonts_popular.map(row).join("")}`
+    + (INFO.fonts_other.length ? `<div class="fp-group">All fonts</div>${INFO.fonts_other.map(row).join("")}` : "")
+    + `<div class="fp-empty" hidden>No fonts match</div>`;
+  $("#fpSearch").placeholder = `Search ${all} fonts`;
+}
+function filterFonts(q) {
+  q = q.trim().toLowerCase();
+  let shown = 0;
+  $$(".fp-row", $("#fpList")).forEach(r => { r.hidden = !!q && !r.dataset.f.toLowerCase().includes(q); if (!r.hidden) shown++; });
+  $$(".fp-group", $("#fpList")).forEach(g => { g.hidden = !!q; });
+  $(".fp-empty", $("#fpList")).hidden = shown > 0;
+}
+function openFontPop(anchor, current, onPick) {
+  const pop = $("#fontPop");
+  if (FP.anchor === anchor) return closeFontPop();
+  FP.anchor = anchor; FP.onPick = onPick;
+  $("#fpSearch").value = ""; filterFonts("");
+  $$(".fp-row", pop).forEach(r => r.classList.toggle("on", r.dataset.f === current));
+  positionFontPop();
+  pop.classList.add("open");
+  const cur = $(".fp-row.on", pop);
+  $("#fpList").scrollTop = cur ? cur.offsetTop - 120 : 0;
+  if (matchMedia("(pointer: fine)").matches) $("#fpSearch").focus({ preventScroll: true });
+}
+function positionFontPop() {
+  if (!FP.anchor || innerWidth <= 860) return;
+  const pop = $("#fontPop"), r = FP.anchor.getBoundingClientRect();
+  const w = 330, h = Math.min(440, innerHeight * 0.62);
+  let top = r.bottom + 6;
+  if (top + h > innerHeight - 10) top = Math.max(10, r.top - h - 6);
+  Object.assign(pop.style, { left: clamp(r.left, 10, innerWidth - w - 10) + "px", top: top + "px", maxHeight: h + "px" });
+}
+function closeFontPop() { $("#fontPop").classList.remove("open"); FP.anchor = null; }
+$("#fpList").addEventListener("click", e => { const r = e.target.closest(".fp-row"); if (r && FP.onPick) { FP.onPick(r.dataset.f); closeFontPop(); } });
+$("#fpSearch").addEventListener("input", e => filterFonts(e.target.value));
+$("#fpSearch").addEventListener("keydown", e => {
+  const first = $$(".fp-row", $("#fpList")).find(r => !r.hidden);
+  if (e.key === "ArrowDown" && first) { e.preventDefault(); first.focus(); }
+  if (e.key === "Enter" && first) { e.preventDefault(); first.click(); }
+});
+$("#fpList").addEventListener("keydown", e => {
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  e.preventDefault();
+  const rows = $$(".fp-row", $("#fpList")).filter(r => !r.hidden), i = rows.indexOf(document.activeElement);
+  if (e.key === "ArrowUp" && i <= 0) return $("#fpSearch").focus();
+  const n = rows[clamp(i + (e.key === "ArrowDown" ? 1 : -1), 0, rows.length - 1)];
+  if (n) n.focus();
+});
+document.addEventListener("pointerdown", e => { if (FP.anchor && !e.target.closest("#fontPop") && !FP.anchor.contains(e.target)) closeFontPop(); });
+$("#editorScroll").addEventListener("scroll", positionFontPop, { passive: true });
+window.addEventListener("resize", positionFontPop);
+
+// ------------------------------------------------------------------ text blocks
+const SIZE_STEPS = [6, 8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 96, 110, 128, 150, 180, 200, 240, 300, 360, 400];
+function renderBlocks() {
+  const wrap = $("#blocks"), B = T().blocks;
+  wrap.innerHTML = "";
+  B.forEach((b, i) => {
+    const el = document.createElement("div");
+    el.className = "block";
+    el.innerHTML = `
+      <div class="block-head"><span class="block-num">Text ${i + 1}</span><div class="mini-actions">
+        ${i > 0 ? `<button type="button" class="icon-btn" data-act="up" title="Move up">${ic("up", 15)}</button>` : ""}
+        ${i < B.length - 1 ? `<button type="button" class="icon-btn" data-act="down" title="Move down">${ic("down", 15)}</button>` : ""}
+        <button type="button" class="icon-btn" data-act="dup" title="Duplicate">${ic("copy", 15)}</button>
+        ${B.length > 1 ? `<button type="button" class="icon-btn danger" data-act="del" title="Remove">${ic("trash", 15)}</button>` : ""}
+      </div></div>
+      <div class="bar">
+        <button type="button" class="font-btn" title="Font: ${esc(b.font)}"><img alt="${esc(b.font)}" src="${fontSrc(b.font)}"><span class="chev">${ic("chev", 15)}</span></button>
+        <div class="stepper size" title="Font size (points)"><button type="button" data-d="-1" aria-label="Smaller">−</button><input type="number" inputmode="decimal" min="4" max="400" aria-label="Font size"><span class="unit">pt</span><button type="button" data-d="1" aria-label="Bigger">+</button></div>
+      </div>
+      <div class="bar">
+        <div class="seg style" role="group" aria-label="Style">
+          <button type="button" class="b" data-k="bold" title="Bold (Ctrl+B)">B</button><button type="button" class="i" data-k="italic" title="Italic (Ctrl+I)">I</button><button type="button" class="u" data-k="underline" title="Underline (Ctrl+U)">U</button><button type="button" class="s" data-k="strike" title="Strikethrough">S</button>
+        </div>
+        <div class="seg align" role="group" aria-label="Alignment">
+          <button type="button" data-v="left" title="Align left">${ic("alignL")}</button><button type="button" data-v="center" title="Center">${ic("alignC")}</button><button type="button" data-v="right" title="Align right">${ic("alignR")}</button>
+        </div>
+        <label class="select" title="Line spacing">${ic("spacing", 15)}<select aria-label="Line spacing">${[0.8, 0.9, 1, 1.15, 1.3, 1.5, 2].map(v => `<option value="${v}"${v == b.line_spacing ? " selected" : ""}>${v}×</option>`).join("")}</select></label>
+      </div>
+      <textarea class="text" rows="2" placeholder="Type here… (Enter for a new line)"></textarea>`;
+    const ta = $("textarea", el), fbtn = $(".font-btn", el), sizeIn = $(".size input", el);
+    const styleTa = () => {
+      ta.style.fontFamily = `"${b.font}", system-ui, sans-serif`;
+      ta.style.fontWeight = b.bold ? "700" : "400";
+      ta.style.fontStyle = b.italic ? "italic" : "normal";
+      ta.style.textDecoration = [b.underline && "underline", b.strike && "line-through"].filter(Boolean).join(" ") || "none";
+      ta.style.textAlign = b.align;
+    };
+    const styleBtns = $$(".style button", el);
+    const syncStyle = () => styleBtns.forEach(x => x.classList.toggle("on", !!b[x.dataset.k]));
+    ta.value = b.text;
+    sizeIn.value = b.size;
+    styleTa(); syncStyle();
+    ta.addEventListener("input", () => { b.text = ta.value; changed(); });
+    ta.addEventListener("keydown", e => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const k = { b: "bold", i: "italic", u: "underline" }[e.key.toLowerCase()];
+      if (k) { e.preventDefault(); b[k] = !b[k]; syncStyle(); styleTa(); changed(); }
+    });
+    $(".font-btn img", el).addEventListener("error", e => { e.target.replaceWith(Object.assign(document.createElement("span"), { textContent: b.font })); }, { once: true });
+    fbtn.addEventListener("click", () => openFontPop(fbtn, b.font, f => {
+      b.font = f; fbtn.title = "Font: " + f;
+      const img = Object.assign(new Image(), { alt: f, src: fontSrc(f) });
+      fbtn.firstElementChild.replaceWith(img);
+      styleTa(); changed();
+    }));
+    const setSize = v => { b.size = clamp(Math.round(v * 2) / 2, 4, 400); sizeIn.value = b.size; changed(); };
+    sizeIn.addEventListener("input", () => { const v = parseFloat(sizeIn.value); if (v >= 4 && v <= 400) { b.size = v; changed(); } });
+    sizeIn.addEventListener("change", () => setSize(parseFloat(sizeIn.value) || b.size));
+    $$(".size button", el).forEach(btn => btn.addEventListener("click", () => setSize(+btn.dataset.d > 0
+      ? (SIZE_STEPS.find(s => s > b.size) || 400) : ([...SIZE_STEPS].reverse().find(s => s < b.size) || 4))));
+    styleBtns.forEach(x => x.addEventListener("click", () => { b[x.dataset.k] = !b[x.dataset.k]; syncStyle(); styleTa(); changed(); }));
+    seg($(".align", el), () => b, "align", styleTa);
+    $("select", el).addEventListener("change", e => { b.line_spacing = parseFloat(e.target.value); changed(); });
+    $$("[data-act]", el).forEach(x => x.addEventListener("click", () => {
+      const a = x.dataset.act;
+      if (a === "up") B.splice(i - 1, 0, B.splice(i, 1)[0]);
+      if (a === "down") B.splice(i + 1, 0, B.splice(i, 1)[0]);
+      if (a === "dup") B.splice(i + 1, 0, JSON.parse(JSON.stringify(b)));
+      if (a === "del") B.splice(i, 1);
+      renderBlocks(); changed(true);
+    }));
+    wrap.appendChild(el);
+  });
+}
+$("#addBlock").addEventListener("click", () => {
+  const B = T().blocks, last = B[B.length - 1];
+  B.push(Object.assign(DEF_BLOCK(), last ? { font: last.font, size: Math.max(12, Math.round(last.size * 0.6)), align: last.align } : {}));
+  renderBlocks();
+  const tas = $$("#blocks textarea"); tas[tas.length - 1].focus();
+  changed();
+});
+
+const textSync = [
+  seg($("#orient"), T, "orientation"),
+  bindSwitch("fit", T, "fit"),
+  bindSwitch("tBorder", T, "border"),
+  bindSwitch("tInvert", T, "invert"),
+  stepper($("#tPad"), { get: () => T().padding_mm, set: v => { T().padding_mm = v; changed(); }, step: 0.5, min: 0, max: 20 }),
+];
+const lenSync = stepper($("#lenStep"), { get: () => T().fixed_len, set: v => { T().fixed_len = v; if (T().length_mm > 0) T().length_mm = v; changed(); }, step: 5, min: 26, max: 2000, dec: 0 });
+function syncFixed() {
+  const on = T().length_mm > 0;
+  $("#fixedLen").checked = on; $("#lenStep").hidden = !on;
+  $("#fixedHint").textContent = on ? "The label is cut at exactly this length" : "Off: the label is exactly as long as the text";
+  lenSync();
+}
+$("#fixedLen").addEventListener("change", e => { T().length_mm = e.target.checked ? T().fixed_len : 0; syncFixed(); changed(); });
+textSync.push(syncFixed);
+syncFixed();
+$("#resetText").addEventListener("click", () => {
+  S.text = DEF_TEXT(); renderBlocks(); textSync.forEach(f => f()); changed(true);
+  toast("info", "Text reset to the defaults");
+});
+
+// ------------------------------------------------------------------ upload / shipping labels
+function syncSizeRows() { const m = F().size; $("#pctRow").hidden = m !== "percent"; $("#alignRow").hidden = m === "fit"; $("#sizeCard").hidden = m === "fit"; }
+seg($("#rotate"), F, "rotate");
+seg($("#sizeMode"), F, "size", syncSizeRows);
+seg($("#fAlign"), F, "align");
+syncSizeRows();
+bindRange("pct", "pctVal", "percent", v => v + "%");
+bindRange("dark", "darkVal", "darkness", v => v);
+["trim", "dither"].forEach(k => bindSwitch(k, F, k));
+bindSwitch("fBorder", F, "border");
+bindSwitch("fInvert", F, "invert");
+stepper($("#fPad"), { get: () => F().padding_mm, set: v => { F().padding_mm = v; changed(); }, step: 0.5, min: 0, max: 20 });
+
+const fileInput = $("#fileInput");
+$("#drop").addEventListener("click", () => fileInput.click());
+$("#drop").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } });
+$("#replaceBtn").addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => { const f = fileInput.files[0]; fileInput.value = ""; if (f) upload(f); });
+$("#removeFile").addEventListener("click", () => { Object.assign(S.file, { id: null, name: "", pages: 0, exclude: [], crop: null }); syncFileCard(); changed(true); });
+
+async function upload(file) {
+  if (S.tab !== "file") setTab("file");
+  $("#drop").hidden = true; $("#fileCard").hidden = false; $("#fileCard").classList.add("loading");
+  $("#fcName").textContent = file.name || "Pasted image"; $("#fcMeta").textContent = "Uploading…"; $("#fcThumb").removeAttribute("src");
+  const fd = new FormData(); fd.append("file", file, file.name || "pasted.png");
+  try {
+    const r = await fetch("/api/upload", { method: "POST", body: fd });
+    const j = await r.json().catch(() => ({ error: "Upload failed" }));
+    if (!r.ok) throw new Error(j.error || "Upload failed");
+    Object.assign(S.file, { id: j.id, name: j.name || file.name || "Pasted image", pages: j.pages, auto: j.auto, exclude: [], crop: null });
+    changed(true);
+  } catch (err) {
+    Object.assign(S.file, { id: null, name: "", pages: 0, exclude: [], crop: null });
+    toast("bad", "Couldn't open that file", err.message);
+    changed(true);
+  }
+  $("#fileCard").classList.remove("loading");
+  syncFileCard();
+}
+function syncFileCard() {
+  const f = S.file, has = !!f.id;
+  $("#drop").hidden = has; $("#fileCard").hidden = !has;
+  if (!has) return;
+  $("#fcName").textContent = f.name; $("#fcName").title = f.name;
+  $("#fcMeta").textContent = (f.pages > 1 ? `${f.pages} pages · each page prints as its own label` : "1 page")
+    + (f.auto === "vinted" ? " · Vinted sheet cropped to the postage label" : "");
+  $("#fcThumb").src = `/api/upload/${f.id}/page/0`;
+  $("#cropBtn").classList.toggle("on", !!f.crop);
+  $("#cropBtn span").textContent = f.crop ? "Cropped" : "Crop";
+}
+
+// crop tool
+let cropDraft = [0, 0, 1, 1];
+const cropArea = $("#cropArea");
+$("#cropBtn").addEventListener("click", () => {
+  const f = S.file; if (!f.id) return;
+  const first = [...Array(f.pages).keys()].find(i => !f.exclude.includes(i)) ?? 0;
+  cropDraft = f.crop ? [...f.crop] : [0, 0, 1, 1];
+  $("#cropImg").src = `/api/upload/${f.id}/page/${first}`;
+  drawCrop(); openModal("cropModal");
+});
+function drawCrop() {
+  const [x0, y0, x1, y1] = cropDraft;
+  Object.assign($("#cropBox").style, { left: x0 * 100 + "%", top: y0 * 100 + "%", width: (x1 - x0) * 100 + "%", height: (y1 - y0) * 100 + "%" });
+}
+cropArea.addEventListener("pointerdown", e => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const r = cropArea.getBoundingClientRect(), MIN = 0.03;
+  const pt = ev => [clamp((ev.clientX - r.left) / r.width, 0, 1), clamp((ev.clientY - r.top) / r.height, 0, 1)];
+  const start = pt(e), box = [...cropDraft];
+  const mode = e.target.dataset.h || (e.target.closest("#cropBox") ? "move" : "new");
+  cropArea.setPointerCapture(e.pointerId);
+  const move = ev => {
+    const [x, y] = pt(ev);
+    let [x0, y0, x1, y1] = box;
+    if (mode === "new") { x0 = Math.min(start[0], x); x1 = Math.max(start[0], x); y0 = Math.min(start[1], y); y1 = Math.max(start[1], y); }
+    else if (mode === "move") {
+      const dx = clamp(x - start[0], -box[0], 1 - box[2]), dy = clamp(y - start[1], -box[1], 1 - box[3]);
+      x0 += dx; x1 += dx; y0 += dy; y1 += dy;
+    } else {
+      if (mode.includes("w")) x0 = Math.min(x, x1 - MIN);
+      if (mode.includes("e")) x1 = Math.max(x, x0 + MIN);
+      if (mode.includes("n")) y0 = Math.min(y, y1 - MIN);
+      if (mode.includes("s")) y1 = Math.max(y, y0 + MIN);
+    }
+    cropDraft = [x0, y0, x1, y1]; drawCrop();
+  };
+  const up = () => {
+    cropArea.removeEventListener("pointermove", move);
+    cropArea.removeEventListener("pointerup", up);
+    cropArea.removeEventListener("pointercancel", up);
+    if (cropDraft[2] - cropDraft[0] < MIN || cropDraft[3] - cropDraft[1] < MIN) { cropDraft = box; drawCrop(); }
+  };
+  cropArea.addEventListener("pointermove", move);
+  cropArea.addEventListener("pointerup", up);
+  cropArea.addEventListener("pointercancel", up);
+});
+$("#cropReset").addEventListener("click", () => { cropDraft = [0, 0, 1, 1]; drawCrop(); });
+$("#cropApply").addEventListener("click", () => {
+  const [x0, y0, x1, y1] = cropDraft;
+  S.file.crop = (x0 < 0.003 && y0 < 0.003 && x1 > 0.997 && y1 > 0.997) ? null : cropDraft.map(v => +v.toFixed(4));
+  closeModal("cropModal"); syncFileCard(); changed(true);
+});
+
+// ------------------------------------------------------------------ modals
+function openModal(id) { const m = document.getElementById(id); m.classList.add("open"); m.setAttribute("aria-hidden", "false"); }
+function closeModal(id) { const m = document.getElementById(id); m.classList.remove("open"); m.setAttribute("aria-hidden", "true"); }
+$$(".modal").forEach(m => m.addEventListener("click", e => { if (e.target === m || e.target.closest("[data-close]")) closeModal(m.id); }));
+
+// ------------------------------------------------------------------ preview
+let seq = 0, ctl = null, timer = null, lastPreview = null;
+let stripState = "empty", animating = false, pendingPreview = null, firstFeed = true;
+const scale = () => ($("#feed").clientWidth || 360) / MEDIA.paper_w_mm;
+
+function changed(now) {
+  store.set("text", S.text);
+  const { id, name, pages, auto, exclude, crop, ...opts } = S.file;
+  store.set("fileopts", opts);
+  clearTimeout(timer);
+  timer = setTimeout(refresh, now ? 0 : 200);
+}
+function previewPayload() {
+  if (S.mode === "file") {
+    if (!S.file.id) return null;
+    const { name, pages, auto, exclude, ...f } = S.file;
+    return { kind: "file", file: f };
+  }
+  return { kind: "text", text: S.text };
+}
+async function refresh() {
+  const p = previewPayload(), my = ++seq;
+  if (ctl) ctl.abort();
+  if (!p) return showEmpty(S.mode === "file" ? "Drop a shipping label to see it come out of the printer" : "Start typing to see your label");
+  ctl = new AbortController();
+  $("#stage").classList.add("busy");
+  try {
+    const r = await fetch("/api/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p), signal: ctl.signal });
+    const j = await r.json();
+    if (my !== seq) return;
+    if (!r.ok) return showEmpty(j.empty ? "Start typing to see your label" : (j.error || "Preview failed"), !j.empty);
+    showPreview(j);
+  } catch (e) {
+    if (e.name !== "AbortError" && my === seq) showEmpty("Can't reach the labelprinter server", true);
+  } finally {
+    if (my === seq) $("#stage").classList.remove("busy");
+  }
+}
+function makePaper(src, g, s) {
+  const p = document.createElement("div");
+  p.className = "paper";
+  const img = new Image(); img.alt = ""; img.draggable = false; img.src = src;
+  p.appendChild(img); p._g = g;
+  placePaper(p, s);
+  p.addEventListener("click", e => { if (!e.target.closest(".page-chip") && !animating) openPreviewZoom(); });
+  return p;
+}
+function placePaper(p, s) {
+  const g = p._g;
+  p.style.width = g.paper[0] * s + "px";
+  p.style.height = g.paper[1] * s + "px";
+  p.style.borderRadius = shapeRadius(g, s);
+  Object.assign($("img", p).style, { left: g.area[0] * s + "px", top: g.area[1] * s + "px", width: g.area[2] * s + "px", height: g.area[3] * s + "px" });
+}
+let paperTok = 0;
+async function updatePaper(p, pg) {
+  const my = ++paperTok, img = new Image();
+  img.alt = ""; img.draggable = false; img.src = pg.png;
+  try { await img.decode(); } catch {}
+  if (my !== paperTok || !p.isConnected) return;
+  $("img", p).replaceWith(img); p._g = geomOf(pg);
+  placePaper(p, scale());
+}
+function addPageChip(p, i) {
+  const chip = document.createElement("button");
+  chip.type = "button"; chip.className = "page-chip";
+  const sync = () => {
+    const ex = S.file.exclude.includes(i);
+    p.classList.toggle("excluded", ex);
+    chip.innerHTML = ic(ex ? "x" : "check", 13) + `Page ${i + 1}`;
+    chip.title = ex ? "Skipped - click to print this page" : "Click to skip this page";
+  };
+  chip.addEventListener("click", () => { const f = S.file; f.exclude = f.exclude.includes(i) ? f.exclude.filter(x => x !== i) : [...f.exclude, i]; sync(); updateMeta(); });
+  sync(); p.appendChild(chip);
+}
+function showPreview(j) {
+  if (animating) { pendingPreview = j; return; }
+  lastPreview = j;
+  $("#empty").hidden = true;
+  const strip = $("#strip"), s = scale(), multi = S.mode === "file" && S.file.pages > 1;
+  const papers = $$(".paper", strip);
+  if (j.pages.length === 1 && !multi && papers.length === 1 && strip.childElementCount === 1) updatePaper(papers[0], j.pages[0]);
+  else {
+    strip.innerHTML = "";
+    j.pages.forEach((pg, i) => {
+      const p = makePaper(pg.png, geomOf(pg), s);
+      if (multi) { if (i) p.classList.add("joined"); addPageChip(p, i); }
+      strip.appendChild(p);
+    });
+    if (j.total > j.pages.length) {
+      const n = j.total - j.pages.length;
+      strip.appendChild(Object.assign(document.createElement("div"), { className: "more-pages", textContent: `+ ${n} more page${n > 1 ? "s" : ""} (not shown, but they will print)` }));
+    }
+  }
+  const w = j.warnings || [];
+  $("#warn").hidden = !w.length;
+  $("#warn").innerHTML = w.length ? ic("alert", 14) + `<span>${esc(w.join(" "))}</span>` : "";
+  updateMeta();
+  if (stripState !== "shown") { stripState = "shown"; feedIn(firstFeed ? 1300 : 0, firstFeed ? 550 : 0); firstFeed = false; }
+}
+function feedIn(dur, delay = 0) {
+  if (reduceMotion) return;
+  const len = lastPreview ? lastPreview.pages.reduce((a, p) => a + geomOf(p).paper[1], 0) : 50;
+  $("#strip").animate([{ transform: "translateY(-100%)" }, { transform: "translateY(0)" }],
+    { duration: dur || clamp(len * 7, 500, 1400), delay, easing: "cubic-bezier(.22,.8,.25,1)", fill: "backwards" });
+}
+async function showEmpty(msg, isError) {
+  lastPreview = null;
+  $("#emptyText").textContent = msg;
+  $("#empty").classList.toggle("error", !!isError);
+  $("#empty").firstElementChild.innerHTML = ic(isError ? "alert" : "info", 18);
+  $("#empty").hidden = false;
+  $("#warn").hidden = true;
+  updateMeta();
+  const strip = $("#strip");
+  if (animating) { pendingPreview = null; stripState = "empty"; strip.innerHTML = ""; return; }
+  if (stripState === "shown") {
+    stripState = "empty";
+    if (!reduceMotion) await strip.animate([{ transform: "translateY(0)" }, { transform: "translateY(-102%)" }], { duration: 420, easing: "cubic-bezier(.5,0,.75,0)" }).finished.catch(() => {});
+    if (stripState === "empty") strip.innerHTML = "";
+  }
+}
+new ResizeObserver(() => {
+  const s = scale();
+  $$("#feed .paper").forEach(p => { p.classList.add("instant"); placePaper(p, s); });
+  requestAnimationFrame(() => $$("#feed .paper.instant").forEach(p => p.classList.remove("instant")));
+}).observe($("#feed"));
+
+// ------------------------------------------------------------------ meta (dimensions, tape use, print button)
+let printing = false;
+const selectedPages = () => !lastPreview ? 0 : (S.mode === "file" ? Math.max(0, S.file.pages - S.file.exclude.length) : 1);
+const labelCount = () => selectedPages() * S.copies;
+function selectedLength() {
+  const j = lastPreview; if (!j) return 0;
+  if (S.mode !== "file") return j.pages[0].length_mm;
+  const lens = j.pages.map(p => p.length_mm), avg = lens.reduce((a, b) => a + b, 0) / lens.length;
+  return lens.reduce((a, l, i) => a + (S.file.exclude.includes(i) ? 0 : l), 0) + Math.max(0, j.total - j.pages.length) * avg;
+}
+function updateMeta() {
+  const j = lastPreview, n = labelCount(), cont = MEDIA.kind === "continuous";
+  if (!j) $("#dims").textContent = S.mode === "file" ? "No label uploaded" : "Nothing to print yet";
+  else if (S.mode === "file" && S.file.pages > 1) $("#dims").textContent = `${selectedPages()} of ${S.file.pages} pages · ${cont ? MEDIA.width_mm + " mm roll" : MEDIA.name}`;
+  else { const p = j.pages[0]; $("#dims").textContent = geomOf(p).label + (p.rotated ? " · along the length" : "") + (p.at_min ? " · shortest the printer allows" : ""); }
+  const total = selectedLength() * S.copies;
+  $("#usage").textContent = !n ? "" : cont ? `Uses ${total >= 1000 ? (total / 1000).toFixed(2) + " m" : Math.round(total) + " mm"} of tape` : `Uses ${n} label${n === 1 ? "" : "s"}`;
+  const badge = $("#copiesBadge");
+  badge.hidden = !(j && S.copies > 1);
+  badge.textContent = "×" + S.copies;
+  const btn = $("#printBtn");
+  if (!btn.classList.contains("busy") && !btn.classList.contains("done")) $(".pb-txt", btn).textContent = n > 1 ? `Print ${n} labels` : "Print";
+  btn.disabled = !n || printing || STATUS.blocking;
+  btn.title = STATUS.blocking ? STATUS.message : "";
+  $("#zoomBtn").disabled = !j;
+}
+stepper($("#copies"), { get: () => S.copies, set: v => { S.copies = v; updateMeta(); }, step: 1, min: 1, max: 100, dec: 0 });
+
+// ------------------------------------------------------------------ printing + animation
+function setBtn(st) {
+  const b = $("#printBtn");
+  b.classList.remove("busy", "done");
+  if (st) b.classList.add(st);
+  $(".pb-ico", b).innerHTML = st === "busy" ? '<span class="spin"></span>' : ic(st === "done" ? "check" : "printer", 19);
+  if (st === "busy") $(".pb-txt", b).textContent = "Printing…";
+  if (st === "done") $(".pb-txt", b).textContent = "Printed";
+  updateMeta();
+  if (st === "busy") b.disabled = true;
+}
+async function doPrint() {
+  if (printing || !labelCount()) return;
+  const p = previewPayload(); if (!p) return;
+  const keep = i => !(S.mode === "file" && S.file.exclude.includes(i));
+  if (p.kind === "file") p.file.pages = [...Array(S.file.pages).keys()].filter(keep);
+  p.copies = S.copies;
+  const pages = lastPreview.pages.filter((_, i) => keep(i)).map(pg => ({ src: pg.png, g: geomOf(pg) }));
+  await runJob(() => fetch("/api/print", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) }), pages, S.copies, labelCount());
+}
+async function runJob(send, pages, copies, n) {
+  printing = true; setBtn("busy");
+  const anim = playPrint(pages, copies);
+  let ok = false;
+  try {
+    const r = await send();
+    let job = await r.json();
+    if (!r.ok) throw new Error(job.error || "Print failed");
+    const t0 = Date.now();
+    while ((job.state === "sending" || job.state === "printing") && Date.now() - t0 < 120000) {
+      await sleep(600);
+      job = await (await fetch(`/api/jobs/${job.id}`, { cache: "no-store" })).json();
+    }
+    if (job.state === "done") {
+      ok = true;
+      await anim;
+      setBtn("done");
+      toast("ok", `Printed ${n} label${n === 1 ? "" : "s"}`, "Ready to collect from the printer.");
+    } else {
+      stopAnim(); setBtn();
+      toast("bad", job.message || "Problem printing", "Check the printer is on, the lid is closed and labels are loaded.", job.state === "error" && job.message !== "Cancelled" ? job.id : null);
+    }
+  } catch (e) { stopAnim(); setBtn(); toast("bad", "Couldn't print", e.message); }
+  printing = false;
+  if (ok) setTimeout(() => { if (!printing) setBtn(); }, 1800); else updateMeta();
+  pollStatus();
+  if (S.tab === "history") loadHistory();
+}
+let animTok = 0;
+const stopAnim = () => { animTok++; };
+async function playPrint(pages, copies) {
+  if (reduceMotion || !pages.length) return;
+  const my = ++animTok, alive = () => my === animTok;
+  const rig = $("#rig"), feed = $("#feed"), strip = $("#strip"), s = scale();
+  const outs = [];
+  animating = true;
+  rig.classList.add("printing");
+  try {
+    if (stripState === "shown") await strip.animate([{ transform: "translateY(0)" }, { transform: "translateY(-102%)" }], { duration: 360, easing: "cubic-bezier(.55,0,.8,.3)", fill: "forwards" }).finished;
+    strip.style.visibility = "hidden";
+    for (let c = 0; c < Math.min(copies, 3) && alive(); c++) {
+      const out = document.createElement("div");
+      out.className = "strip printout"; outs.push(out);
+      pages.forEach((pg, i) => { const p = makePaper(pg.src, pg.g, s); if (i) p.classList.add("gap"); out.appendChild(p); });
+      feed.appendChild(out);
+      const total = pages.reduce((a, p) => a + p.g.paper[1], 0);
+      rig.classList.add("feeding");
+      // the QL-1100 prints at ~110 mm/s, so the label comes out at roughly real speed
+      await out.animate([{ transform: "translateY(-100%)" }, { transform: "translateY(0)" }],
+        { duration: clamp(total / 110 * 1000, 900, 5200) * (c ? 0.6 : 1), easing: "linear", fill: "forwards" }).finished;
+      rig.classList.remove("feeding");
+      if (!alive()) break;
+      await cutFx();
+      if (!alive()) break;
+      await out.animate([{ transform: "translateY(0) rotate(0deg)", opacity: 1 }, { transform: "translateY(130px) rotate(-5deg)", opacity: 0 }],
+        { duration: 620, easing: "cubic-bezier(.55,0,.9,.4)", fill: "forwards" }).finished;
+      out.remove();
+    }
+  } catch {}
+  finally {
+    outs.forEach(o => o.remove());
+    rig.classList.remove("printing", "feeding");
+    strip.getAnimations().forEach(a => a.cancel());
+    strip.style.visibility = "";
+    animating = false;
+    const wasShown = stripState === "shown";
+    if (pendingPreview) { const j = pendingPreview; pendingPreview = null; showPreview(j); }
+    if (wasShown) feedIn(650);
+  }
+}
+async function cutFx() {
+  const w = $("#feed").clientWidth;
+  $("#rig").animate([{ transform: "translateY(0)" }, { transform: "translateY(1.5px)" }, { transform: "translateY(0)" }], { duration: 160, delay: 200 });
+  await Promise.all([
+    $("#cutLine").animate([{ transform: "scaleX(0)", opacity: 1 }, { transform: "scaleX(1)", opacity: 1, offset: .7 }, { transform: "scaleX(1)", opacity: 0 }], { duration: 460, easing: "ease-out" }).finished,
+    $("#scissors").animate([{ transform: "translateX(0)", opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: 1, offset: .75 }, { transform: `translateX(${w * 1.14}px)`, opacity: 0 }], { duration: 460, easing: "cubic-bezier(.4,0,.2,1)" }).finished,
+  ]);
+}
+$("#printBtn").addEventListener("click", doPrint);
+
+// ------------------------------------------------------------------ toasts
+function toast(kind, title, sub, jobId) {
+  const t = document.createElement("div");
+  t.className = "toast " + kind;
+  t.innerHTML = `<span class="t-ico">${ic({ ok: "check", bad: "alert" }[kind] || "info", 17)}</span><div class="t-body"><b>${esc(title)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div>`
+    + (jobId ? `<button class="btn sm t-act" type="button">Cancel job</button>` : "") + `<button class="icon-btn t-x" type="button" aria-label="Dismiss">${ic("x", 14)}</button>`;
+  const kill = () => { if (t.classList.contains("out")) return; t.classList.add("out"); setTimeout(() => t.remove(), 260); };
+  $(".t-x", t).onclick = kill;
+  if (jobId) $(".t-act", t).onclick = async () => { kill(); const r = await fetch(`/api/jobs/${jobId}/cancel`, { method: "POST" }).then(r => r.json()).catch(() => ({})); toast(r.ok ? "info" : "bad", r.ok ? "Print job cancelled" : "Couldn't cancel - it may have already printed"); };
+  $("#toasts").appendChild(t);
+  setTimeout(kill, kind === "bad" ? 12000 : 3800);
+}
+
+// ------------------------------------------------------------------ close-up view
+function rotateCW(src) {
+  return new Promise(res => {
+    const im = new Image();
+    im.onerror = () => res(src);
+    im.onload = () => {
+      const c = document.createElement("canvas"); c.width = im.height; c.height = im.width;
+      const x = c.getContext("2d"); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(im, 0, 0);
+      res(c.toDataURL());
+    };
+    im.src = src;
+  });
+}
+const Z = { items: [], s: 1, fit: 1 };
+async function openZoom(items, title, sub) {
+  if (!items || !items.length) return;
+  $("#zoomTitle").textContent = title || "Close-up";
+  $("#zoomSub").textContent = sub || "";
+  const inner = $("#zoomInner"); inner.innerHTML = "";
+  openModal("zoomModal");
+  Z.items = [];
+  for (const [i, it] of items.entries()) {
+    const p = document.createElement("div"); p.className = "paper zoomed";
+    const img = new Image(); img.alt = "Label"; img.draggable = false;
+    img.src = it.rotated ? await rotateCW(it.src) : it.src;
+    p.appendChild(img);
+    const item = document.createElement("div"); item.className = "zoom-item";
+    item.append(p, Object.assign(document.createElement("div"), { className: "zoom-cap",
+      textContent: (items.length > 1 ? `Label ${i + 1} · ` : "") + it.g.label + (it.rotated ? " · prints along the length" : "") }));
+    inner.appendChild(item);
+    Z.items.push({ p, img, g: it.rotated ? readGeom(it.g) : it.g });
+  }
+  const body = $("#zoomBody"), widest = Math.max(...Z.items.map(z => z.g.paper[0]));
+  Z.fit = Math.max(1.2, (body.clientWidth - 64) / widest);
+  Z.s = Z.fit;
+  setZoom(Z.fit, null, true);
+  body.scrollTo(0, 0);
+}
+function layoutZoom() {
+  // once zoomed past the image's own resolution, show its pixels sharply instead of blurring them
+  const s = Z.s, crisp = s * (window.devicePixelRatio || 1) >= 300 / 25.4 ? "pixelated" : "auto";
+  for (const z of Z.items) {
+    const g = z.g;
+    z.p.style.width = g.paper[0] * s + "px"; z.p.style.height = g.paper[1] * s + "px";
+    z.p.style.borderRadius = shapeRadius(g, s) || "3px";
+    Object.assign(z.img.style, { left: g.area[0] * s + "px", top: g.area[1] * s + "px", width: g.area[2] * s + "px", height: g.area[3] * s + "px" });
+    z.img.style.imageRendering = crisp;
+  }
+}
+function setZoom(s, anchor, keepScroll) {
+  const body = $("#zoomBody");
+  s = clamp(s, Z.fit * 0.5, Math.max(Z.fit * 8, 48));
+  const ax = anchor ? anchor.x : body.clientWidth / 2, ay = anchor ? anchor.y : body.clientHeight / 2;
+  const cx = body.scrollLeft + ax, cy = body.scrollTop + ay, k = s / Z.s;
+  Z.s = s;
+  layoutZoom();
+  if (!keepScroll) { body.scrollLeft = cx * k - ax; body.scrollTop = cy * k - ay; }
+  $("#zoomPct").textContent = Math.round(s / Z.fit * 100) + "%";
+  $$("#zoomPresets button").forEach(b => b.classList.toggle("on", Math.abs(s - Z.fit) < Z.fit * 0.01));
+}
+const zoomStep = dir => setZoom(Z.s * (dir > 0 ? 1.25 : 0.8));
+const zoomBody = $("#zoomBody");
+$$("#zoomPresets button").forEach(b => b.addEventListener("click", () => setZoom(Z.fit)));
+$$("[data-zd]").forEach(b => b.addEventListener("click", () => zoomStep(+b.dataset.zd)));
+const zoomPoint = e => { const r = zoomBody.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+zoomBody.addEventListener("wheel", e => { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); setZoom(Z.s * Math.exp(-e.deltaY * 0.0018), zoomPoint(e)); }, { passive: false });
+zoomBody.addEventListener("dblclick", e => setZoom(Math.abs(Z.s - Z.fit) < Z.fit * 0.01 ? Z.fit * 3 : Z.fit, zoomPoint(e)));
+zoomBody.addEventListener("pointerdown", e => {       // drag to move around when zoomed in
+  if (e.pointerType !== "mouse" || e.button !== 0) return;
+  const sx = e.clientX, sy = e.clientY, sl = zoomBody.scrollLeft, st = zoomBody.scrollTop;
+  const move = ev => { zoomBody.classList.add("panning"); zoomBody.scrollLeft = sl - (ev.clientX - sx); zoomBody.scrollTop = st - (ev.clientY - sy); };
+  const up = () => { zoomBody.classList.remove("panning"); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+  window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+});
+function openPreviewZoom() {
+  const j = lastPreview; if (!j) return;
+  openZoom(j.pages.map(pg => ({ src: pg.png, g: geomOf(pg), rotated: pg.rotated })), "Close-up",
+    j.pages[0].rotated ? "Turned the right way round for reading - it prints along the length of the label." : "Exactly what will print.");
+}
+$("#zoomBtn").addEventListener("click", openPreviewZoom);
+
+// ------------------------------------------------------------------ history
+async function loadHistory() {
+  const list = $("#histList");
+  let items;
+  try { items = await (await fetch("/api/history", { cache: "no-store" })).json(); }
+  catch { list.innerHTML = `<div class="hist-empty">${ic("alert", 26)}<b>Couldn't load the history</b></div>`; return; }
+  $("#histCount").textContent = items.length ? `${items.length} saved` : "";
+  if (!items.length) {
+    list.innerHTML = `<div class="hist-empty">${ic("history", 30)}<b>No prints yet</b><span>Everything printed from here is kept in this list, ready to print again.</span></div>`;
+    return;
+  }
+  list.innerHTML = "";
+  for (const e of items) {
+    const el = document.createElement("div");
+    el.className = "hist";
+    const g = geoms(e)[0], otherRoll = (e.media || "102") !== MEDIA.id;
+    const size = e.count === 1 ? g.label : `${e.count} labels`, pct = v => (v * 100).toFixed(3) + "%";
+    const imgPos = `left:${pct(g.area[0] / g.paper[0])};width:${pct(g.area[2] / g.paper[0])};top:${pct(g.area[1] / g.paper[1])};height:${pct(g.area[3] / g.paper[1])}`;
+    const radius = g.shape === "round" ? "50%" : g.shape === "die" ? "6px" : "3px";
+    el.innerHTML = `<button type="button" class="hist-thumb${74 * g.paper[1] / g.paper[0] > 140 ? " long" : ""}" data-a="zoom" title="Close-up" style="border-radius:${radius}">
+        <span class="mini" style="aspect-ratio:${g.paper[0]}/${g.paper[1]}"><img loading="lazy" alt="" src="/api/history/${e.id}/0.png" style="${imgPos}"></span>
+        ${e.count > 1 ? `<span class="hist-badge">${e.count}</span>` : ""}</button>
+      <div class="hist-info"><div class="hist-title" title="${esc(e.title)}">${esc(e.title)}</div>
+        <div class="hist-meta"><span>${ago(e.t)}</span><span>${size}${e.copies > 1 ? ` · ×${e.copies}` : ""}</span>${e.who ? `<span>${esc(e.who)}</span>` : ""}${otherRoll ? `<span class="hist-roll" title="Made for a different roll than the one loaded now">${esc(e.media_name || '102 mm continuous roll (4")')}</span>` : ""}</div>
+        <div class="hist-actions"><button class="btn sm primary" type="button" data-a="print">${ic("printer", 14)}Print again</button>${e.kind === "text" && e.spec ? `<button class="btn sm" type="button" data-a="edit">${ic("edit", 14)}Edit</button>` : ""}</div></div>
+      <button class="icon-btn danger" type="button" data-a="del" title="Remove from history">${ic("trash", 15)}</button>`;
+    el.addEventListener("click", ev => { const a = ev.target.closest("[data-a]"); if (a) ({ print: reprint, edit: editEntry, del: delEntry, zoom: zoomEntry })[a.dataset.a](e, el); });
+    list.appendChild(el);
+  }
+}
+function ago(t) {
+  const d = Date.now() / 1000 - t;
+  if (d < 45) return "Just now";
+  if (d < 3600) return `${Math.round(d / 60)} min ago`;
+  if (d < 86400) return `${Math.round(d / 3600)} h ago`;
+  const dt = new Date(t * 1000);
+  return dt.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + ", " + dt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+const geoms = e => e.geom || e.lengths.map(legacyGeom);
+function zoomEntry(e) {
+  const size = e.count === 1 ? geoms(e)[0].label : `${e.count} labels`;
+  openZoom(geoms(e).map((g, n) => ({ src: `/api/history/${e.id}/${n}.png`, g, rotated: (e.rotated || [])[n] })), e.title,
+    `${ago(e.t)} · ${size}${e.who ? " · from " + e.who : ""} - the exact image that was printed`);
+}
+async function reprint(e) {
+  if (printing) return;
+  // the animation shows the saved label; if it was made for another roll the server re-makes it, so skip it
+  const pages = (e.media || "102") === MEDIA.id ? geoms(e).slice(0, 12).map((g, n) => ({ src: `/api/history/${e.id}/${n}.png`, g })) : [];
+  await runJob(() => fetch(`/api/history/${e.id}/reprint`, { method: "POST" }), pages, e.copies, e.count * e.copies);
+}
+function editEntry(e) {
+  S.text = Object.assign(DEF_TEXT(), JSON.parse(JSON.stringify(e.spec)));
+  renderBlocks(); textSync.forEach(f => f());
+  setTab("text"); changed(true);
+  toast("info", "Loaded into the editor", e.title);
+}
+async function delEntry(e, el) {
+  el.classList.add("removing");
+  await fetch(`/api/history/${e.id}`, { method: "DELETE" }).catch(() => {});
+  setTimeout(() => { el.remove(); if (!$("#histList .hist")) loadHistory(); else $("#histCount").textContent = `${$$("#histList .hist").length} saved`; }, 220);
+}
+
+// ------------------------------------------------------------------ printer status (also drives the LED on the drawing)
+const PROBLEM_HINT = { no_media: "Put a DK roll in to print", cover_open: "Close the lid to print", media_end: "Load a new roll to print",
+  cutter_jam: "Open the lid and clear the cutter", offline: "Turn it on - and check the Editor Lite light is off", off: "Turn the printer on",
+  system: "Turn the printer off and on again", unsupported: "Load a Brother DK roll", missing: "Install the Brother QL-1100 driver" };
+let mediaKnown = false, pollTimer = null;
+function applyStatus(s) {
+  const prev = MEDIA.id;
+  STATUS = s;
+  if (s.media) MEDIA = s.media;
+  $("#status").dataset.state = s.state; $("#statusText").textContent = s.message; $("#rig").dataset.state = s.state;
+  $("#rig").classList.toggle("no-media", s.problem === "no_media" || s.problem === "media_end");
+  const roll = s.problem === "no_media" ? "no roll loaded" : MEDIA.name + (s.detected ? "" : " (last used)");
+  $("#rollName").textContent = roll; $("#rollMobile").textContent = roll;
+  $("#alert").hidden = !s.blocking;
+  if (s.blocking) $("#alert").innerHTML = ic("alert", 15) + `<span><b>${esc(s.message)}</b>${PROBLEM_HINT[s.problem] ? " · " + esc(PROBLEM_HINT[s.problem]) : ""}</span>`;
+  if (MEDIA.id !== prev) applyMedia(mediaKnown);
+  else updateMeta();
+  mediaKnown = true;
+}
+function applyMedia(rollChanged) {
+  const cont = MEDIA.kind === "continuous";
+  $("#feed").style.width = (MEDIA.paper_w_mm / 101.6 * 60).toFixed(3) + "%";     // the drawing's slot fits a 102 mm roll
+  $("#fixedRow").hidden = !cont;
+  $('#sizeMode [data-v="fit"]').textContent = cont ? "Fit width" : "Fit label";
+  updateMeta();
+  if (rollChanged) {
+    toast("info", "Roll changed", `${MEDIA.name} detected - everything has been resized for it.`);
+    changed(true);
+    if (S.tab === "history") loadHistory();
+  }
+}
+async function pollStatus() {
+  try { applyStatus(await (await fetch("/api/status", { cache: "no-store" })).json()); }
+  catch { applyStatus({ ...STATUS, state: "error", message: "Server unreachable", problem: null, blocking: false }); }
+}
+function schedulePoll() {                     // check more often while something needs fixing
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(async () => { if (!document.hidden) await pollStatus(); schedulePoll(); }, STATUS.blocking ? 2500 : 5000);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) pollStatus(); });
+
+// ------------------------------------------------------------------ keyboard, drag & drop, paste
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === "Enter" || e.key.toLowerCase() === "p")) { e.preventDefault(); doPrint(); return; }
+  if (e.key === "Escape") { closeFontPop(); $$(".modal.open").forEach(m => closeModal(m.id)); return; }
+  if ($("#zoomModal").classList.contains("open") && !e.ctrlKey && !e.metaKey && !e.target.closest("input, textarea")) {
+    if (e.key === "+" || e.key === "=") zoomStep(1);
+    if (e.key === "-") zoomStep(-1);
+    if (e.key === "0") setZoom(Z.fit);
+  }
+});
+let dragDepth = 0;
+const hasFiles = e => [...((e.dataTransfer && e.dataTransfer.types) || [])].includes("Files");
+window.addEventListener("dragenter", e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; document.body.classList.add("dragging"); });
+window.addEventListener("dragover", e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener("dragleave", e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) document.body.classList.remove("dragging"); });
+window.addEventListener("drop", e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
+  const f = e.dataTransfer.files[0]; if (f) upload(f);
+});
+document.addEventListener("paste", e => {
+  const item = [...((e.clipboardData && e.clipboardData.items) || [])].find(i => i.kind === "file");
+  if (item) { e.preventDefault(); upload(item.getAsFile()); }
+});
+
+// ------------------------------------------------------------------ start
+(async function init() {
+  hydrate();
+  try { INFO = await (await fetch("/api/info")).json(); } catch {}
+  if (INFO.media) MEDIA = INFO.media;
+  applyMedia(false);
+  mediaKnown = true;
+  pollStatus().then(schedulePoll);
+  buildFontList();
+  renderBlocks();
+  setTab(S.tab, true);
+  syncFileCard();
+  updateMeta();
+  refresh();
+})();
+</script>
+</body>
+</html>
