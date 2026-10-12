@@ -63,6 +63,11 @@ def build_raster(images, media, cut=True):
     return qlr.data
 
 
+# Cut right now, without printing or feeding: switch to P-touch Template mode, "^OP3" (perform printer
+# operation: cut), then back to raster mode. (P-touch Template Command Reference QL-1100, section 7.)
+CUT_NOW = b"\x00" * 200 + b"\x1b@" + b"\x1bia\x03" + b"^OP3" + b"\x1bia\x01"
+
+
 def send_raw(data, title):
     h = win32print.OpenPrinter(PRINTER)
     try:
@@ -276,7 +281,8 @@ def _read_status():
         return _with_media({"state": "error", "message": f"Printer '{PRINTER}' isn't installed", "problem": "missing", "jobs": 0})
     st, attrs, jobs = info["Status"], info["Attributes"], info["cJobs"]
     if jobs or st & 0x400:
-        return _with_media({"state": "printing", "message": f"Printing ({jobs} in queue)" if jobs > 1 else "Printing",
+        what = ACTIVITY["what"]
+        return _with_media({"state": "printing", "message": f"{what} ({jobs} in queue)" if jobs > 1 else what,
                             "problem": None, "jobs": jobs})
     r = LINK.query()
     if r == "offline":
@@ -307,6 +313,7 @@ def _read_status():
 
 # blank tape fed with the Feed button but not cut yet (shown hanging out of the drawn printer)
 FED = {"mm": 0.0}
+ACTIVITY = {"what": "Printing"}          # what the printer is busy with, for the status pill
 
 
 def _with_media(v):
@@ -329,11 +336,23 @@ class Jobs:
         self._ids = itertools.count(1)
         self._lock = threading.Lock()
 
+    def cut(self):
+        """Cuts the tape where it is (e.g. blank paper fed with the Feed button)."""
+        return self._send(CUT_NOW, "labelprinter cut", 0, on_sent=lambda: FED.update(mm=0))
+
     def submit(self, images, media, title, cut=True):
         data = build_raster(images, media, cut)
+        fed = 0 if cut else FED["mm"] + sum(media.geometry(im.height)["length_mm"] for im in images)
+        job = self._send(data, title, len(images), on_sent=lambda: FED.update(mm=fed))
+        if job["state"] != "error":
+            log.info("job %s: %d label(s) on %s, %d bytes", job["id"], len(images), media.id, len(data))
+        return job
+
+    def _send(self, data, title, labels, on_sent):
         jid = next(self._ids)
+        ACTIVITY["what"] = "Cutting" if title.endswith(" cut") else "Printing"
         job = {"id": jid, "state": "sending", "message": "Sending to printer...",
-               "labels": len(images), "created": time.time(), "spool_id": None}
+               "labels": labels, "created": time.time(), "spool_id": None}
         with self._lock:
             self._jobs[jid] = job
             for k in [k for k, j in self._jobs.items() if time.time() - j["created"] > 3600]:
@@ -347,12 +366,8 @@ class Jobs:
             job.update(state="error", message=f"Could not send to printer: {e}")
             return job
         job.update(state="printing", message="Printing...")
-        if cut:
-            FED["mm"] = 0
-        else:
-            FED["mm"] += sum(media.geometry(im.height)["length_mm"] for im in images)
+        on_sent()
         threading.Thread(target=self._watch, args=(job,), daemon=True).start()
-        log.info("job %s: %d label(s) on %s, %d bytes", jid, len(images), media.id, len(data))
         return job
 
     def _watch(self, job):

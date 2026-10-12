@@ -345,6 +345,16 @@ def feed():
     return jsonify(_public(job))
 
 
+@app.post("/api/cut")
+def cut_now():
+    """Cuts the tape right now - no printing, no feeding."""
+    problem = _printer_problem()
+    if problem:
+        return problem
+    log.info("cut from %s", request.remote_addr)
+    return jsonify(_public(jobs.cut()))
+
+
 @app.get("/api/jobs/<int:jid>")
 def job_status(jid):
     job = jobs.get(jid)

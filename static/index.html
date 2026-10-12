@@ -564,7 +564,7 @@ body.dragging .drag-overlay { opacity: 1; }
             <!-- buttons: power, feed, cut, Editor Lite -->
             <g transform="translate(230 233)"><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><path d="M-3.6 -3.8 A6 6 0 1 0 3.6 -3.8" fill="none" stroke="#e9ebef" stroke-width="1.7" stroke-linecap="round"/><path d="M0 -6.6 V-0.6" stroke="#e9ebef" stroke-width="1.7" stroke-linecap="round"/></g>
             <g class="p-btn" id="btnFeed" transform="translate(290 233)"><title>Feed (no cut)</title><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><path d="M-6 -6 V4 M-8.6 1.6 L-6 4.4 L-3.4 1.6" stroke="#e9ebef" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M-0.5 -6 H5.5 L8 -3.5 V6 H-0.5 Z" fill="none" stroke="#e9ebef" stroke-width="1.4" stroke-linejoin="round"/></g>
-            <g class="p-btn" id="btnCut" transform="translate(350 233)"><title>Cut</title><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><circle cx="-5" cy="-3.6" r="2.4" fill="none" stroke="#e9ebef" stroke-width="1.4"/><circle cx="-5" cy="3.6" r="2.4" fill="none" stroke="#e9ebef" stroke-width="1.4"/><path d="M-3 -2.2 L7 4.4 M-3 2.2 L7 -4.4" stroke="#e9ebef" stroke-width="1.4" stroke-linecap="round"/></g>
+            <g class="p-btn" id="btnCut" transform="translate(350 233)"><title>Cut now</title><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><circle cx="-5" cy="-3.6" r="2.4" fill="none" stroke="#e9ebef" stroke-width="1.4"/><circle cx="-5" cy="3.6" r="2.4" fill="none" stroke="#e9ebef" stroke-width="1.4"/><path d="M-3 -2.2 L7 4.4 M-3 2.2 L7 -4.4" stroke="#e9ebef" stroke-width="1.4" stroke-linecap="round"/></g>
             <g transform="translate(410 233)"><rect x="-24" y="-13" width="48" height="26" rx="12" fill="url(#gBtn)" stroke="#3b3f48"/><path d="M-15 -11.6 H15" stroke="#fff" stroke-opacity=".13"/><text y="-1" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="6.6" fill="#e9ebef">Editor</text><text y="7" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="6.6" fill="#e9ebef">Lite</text></g>
             <!-- label exit slot -->
             <rect x="106" y="262" width="428" height="96" rx="12" fill="url(#gSlot)"/>
@@ -1190,12 +1190,12 @@ function updateMeta() {
 stepper($("#copies"), { get: () => S.copies, set: v => { S.copies = v; updateMeta(); }, step: 1, min: 1, max: 100, dec: 0 });
 
 // ------------------------------------------------------------------ printing + animation
-function setBtn(st) {
+function setBtn(st, busyText = "Printing…") {
   const b = $("#printBtn");
   b.classList.remove("busy", "done");
   if (st) b.classList.add(st);
   $(".pb-ico", b).innerHTML = st === "busy" ? '<span class="spin"></span>' : ic(st === "done" ? "check" : "printer", 19);
-  if (st === "busy") $(".pb-txt", b).textContent = "Printing…";
+  if (st === "busy") $(".pb-txt", b).textContent = busyText;
   if (st === "done") $(".pb-txt", b).textContent = "Printed";
   updateMeta();
   if (st === "busy") b.disabled = true;
@@ -1306,6 +1306,44 @@ function setFed(mm, ms = 0) {
   el.style.transition = ms ? `height ${ms}ms linear` : "none";
   el.style.height = FED * scale() + "px";
 }
+// Scissors: the printer cuts right where the paper is (real cut command, nothing printed)
+async function cutNow() {
+  printing = true; setBtn("busy", "Cutting…");
+  $("#status").dataset.state = "printing"; $("#statusText").textContent = "Cutting";
+  const anim = cutAnim();
+  try {
+    const r = await fetch("/api/cut", { method: "POST" });
+    let job = await r.json();
+    if (!r.ok) throw new Error(job.error || "Couldn't cut");
+    const t0 = Date.now();
+    while ((job.state === "sending" || job.state === "printing") && Date.now() - t0 < 30000) {
+      await sleep(400);
+      job = await (await fetch(`/api/jobs/${job.id}`, { cache: "no-store" })).json();
+    }
+    await anim;
+    if (job.state !== "done") throw new Error(job.message || "Couldn't cut");
+    setBtn();
+  } catch (e) { stopAnim(); setBtn(); toast("bad", "Couldn't cut", e.message); }
+  printing = false; updateMeta(); pollStatus();
+}
+async function cutAnim() {
+  const rig = $("#rig"), el = $("#fedStrip"), strip = $("#strip");
+  rig.classList.add("printing");
+  const showsLabel = FED === 0 && stripState === "shown" && !reduceMotion;
+  if (showsLabel)                                    // the label preview goes back in first: nothing of it gets cut
+    await strip.animate([{ transform: "translateY(0)" }, { transform: "translateY(-102%)" }],
+      { duration: 320, easing: "cubic-bezier(.55,0,.8,.3)", fill: "forwards" }).finished;
+  await cutFx();
+  if (FED > 0 && !reduceMotion) {                    // the hanging blank piece drops away...
+    await el.animate([{ transform: "translateY(0) rotate(0deg)", opacity: 1 }, { transform: "translateY(110px) rotate(-5deg)", opacity: 0 }],
+      { duration: 560, easing: "cubic-bezier(.55,0,.9,.4)" }).finished;
+  }
+  setFed(0);
+  rig.classList.remove("printing");
+  strip.getAnimations().forEach(a => a.cancel());
+  if (stripState === "shown" && !reduceMotion)       // the preview fades back in - nothing was printed
+    strip.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: "ease-out" });
+}
 async function feedOut(mm) {                     // Feed button: blank paper comes out of the slot at ~110 mm/s
   if (reduceMotion) return setFed(FED + mm);
   const rig = $("#rig"), strip = $("#strip"), el = $("#fedStrip"), s = scale();
@@ -1328,6 +1366,7 @@ $$(".p-btn").forEach(btn => btn.addEventListener("click", async () => {
   if (printing) return;
   if (STATUS.blocking) { toast("bad", STATUS.message, PROBLEM_HINT[STATUS.problem] || ""); return; }
   const cut = btn.id === "btnCut", cont = MEDIA.kind === "continuous";
+  if (cut) { disarm(); return cutNow(); }            // cutting wastes nothing, so no confirmation
   if (armed !== btn.id) {
     disarm(); armed = btn.id; btn.classList.add("armed");
     $("#pHint").textContent = cut ? `Click again to cut (feeds ${cont ? MEDIA.min_length_mm + " mm" : "one blank label"} first)`
