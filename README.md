@@ -15,7 +15,7 @@
 - **Vinted A4 sheets fixed automatically.** Vinted's InPost labels come as an A4 sheet with instructions and a cut line. The site recognises these sheets by reading the PDF's text: an A4 page that mentions InPost and has the print/cut instructions. It works whatever the file is called. It crops the sheet to just the postage label and turns it upright, rendering it from the PDF at full quality so barcodes scan.
 - **Detects the loaded roll.** It reads the printer directly over USB, so the whole site adapts to whatever DK roll is in: 12–103 mm continuous, die-cut (for example 102×152 or 62×29) and round labels.
 - **Live printer status.** It shows when there are no labels, the lid is open, the roll ran out, there's a cutter jam, or the printer is off. Printing is blocked with a clear message instead of failing silently.
-- **History.** Your last 30 prints, with true-size thumbnails, a zoomable close-up, and one-click print again or edit.
+- **History.** Your last 100 prints, with true-size thumbnails, a zoomable close-up, and one-click print again or edit.
 - **Print animation.** The label feeds out of a drawn QL-1100 at the printer's real speed.
 - **Working Feed and Cut buttons.** Click the Feed and Cut buttons on the drawn printer and they act exactly like the buttons on the real QL-1100. **Feed** pushes blank tape out without cutting (handy after loading a new roll), and you can watch it hang out of the printer. **Cut** cuts instantly with the printer's own cutter, with no printing and no wasted tape. Nothing extra is needed, because these commands are built into the printer.
 - **Works on phones.** The layout is responsive and dark-themed.

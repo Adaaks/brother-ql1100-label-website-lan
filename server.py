@@ -30,7 +30,7 @@ PORTS = [80, 8080]
 MAX_COPIES = 100
 MAX_PREVIEW_PAGES = 12
 HIST_DIR = os.path.join(BASE, "history")
-HIST_MAX = 30
+HIST_MAX = 100
 
 os.makedirs(os.path.join(BASE, "logs"), exist_ok=True)
 log = logging.getLogger("labelprinter")

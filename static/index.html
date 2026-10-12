@@ -687,8 +687,8 @@ const ic = (n, s = 16) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" f
 const hydrate = (root = document) => $$("i[data-i]", root).forEach(el => { if (!el.firstChild) el.innerHTML = ic(el.dataset.i, +(el.dataset.s || 16)); });
 
 // ------------------------------------------------------------------ state (defaults match the original site)
-const DEF_BLOCK = () => ({ text: "", font: "Arial", size: 36, bold: false, italic: false, underline: false, strike: false, align: "center", line_spacing: 1.0 });
-const DEF_TEXT = () => ({ blocks: [Object.assign(DEF_BLOCK(), { text: "Welcome", bold: true, size: 48, starter: true })], orientation: "horizontal", fit: false, length_mm: 0, fixed_len: 50, padding_mm: 1.5, border: false, invert: false });
+const DEF_BLOCK = () => ({ text: "", font: "Arial", size: 50, bold: false, italic: false, underline: false, strike: false, align: "center", line_spacing: 1.0 });
+const DEF_TEXT = () => ({ blocks: [Object.assign(DEF_BLOCK(), { text: "Welcome", bold: true, size: 50, starter: true })], orientation: "horizontal", fit: false, length_mm: 0, fixed_len: 50, padding_mm: 1.5, border: false, invert: false });
 const DEF_FILE = () => ({ rotate: "auto", size: "fit", percent: 60, align: "center", trim: true, dither: false, darkness: 50, padding_mm: 1, border: false, invert: false });
 const S = {
   tab: store.get("tab", "text"),
@@ -821,7 +821,7 @@ function renderBlocks() {
       </div></div>
       <div class="bar">
         <button type="button" class="font-btn" title="Font: ${esc(b.font)}"><img alt="${esc(b.font)}" src="${fontSrc(b.font)}"><span class="chev">${ic("chev", 15)}</span></button>
-        <div class="stepper size" title="Font size (points)"><button type="button" data-d="-1" aria-label="Smaller">−</button><input type="number" inputmode="decimal" min="4" max="400" aria-label="Font size"><span class="unit">pt</span><button type="button" data-d="1" aria-label="Bigger">+</button></div>
+        <div class="stepper size" title="Font size (points)"><button type="button" data-d="-1" aria-label="Smaller">−</button><input type="number" inputmode="decimal" min="4" max="400" aria-label="Font size"><button type="button" data-d="1" aria-label="Bigger">+</button></div>
       </div>
       <div class="bar">
         <div class="seg style" role="group" aria-label="Style">
@@ -832,7 +832,7 @@ function renderBlocks() {
         </div>
         <label class="select" title="Line spacing">${ic("spacing", 15)}<select aria-label="Line spacing">${[0.8, 0.9, 1, 1.15, 1.3, 1.5, 2].map(v => `<option value="${v}"${v == b.line_spacing ? " selected" : ""}>${v}×</option>`).join("")}</select></label>
       </div>
-      <textarea class="text" rows="2" placeholder="Type here… (Enter for a new line)"></textarea>`;
+      <textarea class="text" rows="2"></textarea>`;
     const ta = $("textarea", el), fbtn = $(".font-btn", el), sizeIn = $(".size input", el);
     const styleTa = () => {
       ta.style.fontFamily = `"${b.font}", system-ui, sans-serif`;
@@ -1175,7 +1175,7 @@ function updateMeta() {
   const j = lastPreview, n = labelCount(), cont = MEDIA.kind === "continuous";
   if (!j) $("#dims").textContent = S.mode === "file" ? "No label uploaded" : "Nothing to print yet";
   else if (S.mode === "file" && S.file.pages > 1) $("#dims").textContent = `${selectedPages()} of ${S.file.pages} pages · ${cont ? MEDIA.width_mm + " mm roll" : MEDIA.name}`;
-  else { const p = j.pages[0]; $("#dims").textContent = geomOf(p).label + (p.rotated ? " · along the length" : "") + (p.at_min ? " · shortest the printer allows" : ""); }
+  else { const p = j.pages[0]; $("#dims").textContent = geomOf(p).label + (p.rotated ? " · along the length" : ""); }
   const total = selectedLength() * S.copies;
   $("#usage").textContent = !n ? "" : cont ? `Uses ${total >= 1000 ? (total / 1000).toFixed(2) + " m" : Math.round(total) + " mm"} of tape` : `Uses ${n} label${n === 1 ? "" : "s"}`;
   const badge = $("#copiesBadge");

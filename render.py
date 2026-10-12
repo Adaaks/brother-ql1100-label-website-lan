@@ -191,7 +191,10 @@ class Style:
             extra = int(k * h) + 1
             img = img.transform((img.width + extra, h), Image.AFFINE, (1, k, -k * h, 0, 1, 0),
                                 resample=Image.BICUBIC, fillcolor=255)
-        return img
+        # trim to the ink: fonts leave uneven space beside the letters (usually more on the right),
+        # which would make centred text sit off-centre
+        ink = ImageOps.invert(img).getbbox()
+        return img.crop((ink[0], 0, ink[2], img.height)) if ink else img
 
 
 def _wrap(style, para, max_w):
@@ -222,8 +225,8 @@ def _has_content(b):
     return bool(str(b.get("text", "")).strip())
 
 
-def _layout(blocks, scale, wrap_w):
-    """Stacks every block's lines. Returns (image, widest line px, total height px)."""
+def _layout(blocks, scale, wrap_w, box=0):
+    """Stacks every block's lines (aligned within `box` px if wider). Returns (image, widest line px, total height px)."""
     rows = []      # (image, align, pitch)
     for b in blocks:
         st = Style(b, scale)
@@ -233,7 +236,7 @@ def _layout(blocks, scale, wrap_w):
     if not rows:
         raise EmptyDesign("Type some text first.")
     content_w = max(im.width for im, _, _ in rows)
-    box_w = max(content_w, wrap_w or 0)
+    box_w = max(content_w, wrap_w or 0, box)
     total_h = sum(p for _, _, p in rows[:-1]) + rows[-1][0].height
     canvas = Image.new("L", (box_w, max(1, total_h)), 255)
     y = 0
@@ -293,14 +296,28 @@ def render_text(spec, media):
 
     fit = bool(spec.get("fit"))
     scale = 1.0
-    if fit:
-        _, w, h = _layout(blocks, 1.0, None)
-        scale = max_w / w if max_w else max_h / h
-        if max_h:
-            scale = min(scale, max_h / h)
     wrap = None if (fit or vertical) else max_w
-    img, w, h = _layout(blocks, scale, wrap)
-    for _ in range(40):
+    if fit:
+        def ink(scale):       # the size the text actually takes up on the label at this scale
+            img, w, _ = _layout(blocks, scale, None)
+            bb = _ink_bbox(img) or (0, 0, w, img.height)
+            return img, (bb[2] - bb[0]) if vertical else w, bb[3] - bb[1]
+        _, w, h = ink(1.0)
+        if along is None:     # auto length: fill the label the text already needs, never a longer one
+            along = max(min_lines - 2 * pad_end, w if vertical else h)
+            max_w, max_h = (across, along) if not vertical else (along, across)
+        scale = min(max_w / w, max_h / h)
+        img, w, h = ink(scale)
+        for _ in range(40):
+            if w <= max_w and h <= max_h:
+                break
+            scale *= min(0.98, max_w / w, max_h / h)
+            img, w, h = ink(scale)
+        if not vertical:      # lay it out across the full tape width so left/centre/right alignment works
+            img, w, h = _layout(blocks, scale, None, max_w)
+    else:
+        img, w, h = _layout(blocks, scale, wrap)
+    for _ in range(0 if fit else 40):
         too_wide = max_w is not None and w > max_w
         too_tall = max_h is not None and h > max_h
         if not (too_wide or too_tall):
