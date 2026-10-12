@@ -411,19 +411,20 @@ def load_upload(data, filename):
 
 VINTED_PREFIXES = ("vinted-label", "vinted-return")   # Vinted's PDFs are laid out for A4 paper
 
-# Wording printed on Vinted's (and carriers') A4 label sheets, so they're recognised whatever the file is called.
-SHEET_STRONG = ("print this sheet on a4", "drop off at inpost")
-SHEET_HINTS = ("cut out the label", "cut-line", "cut line", "must print and attach this label",
-               "attach the label to the parcel", "attach this label to your parcel", "inpost")
+# Vinted's InPost labels come as an A4 sheet; recognise it from its text whatever the file is called:
+# it must say "InPost" and carry the sheet's print/cut instructions.
+SHEET_REQUIRED = "inpost"
+SHEET_HINTS = ("print this sheet on a4", "drop off at inpost", "cut out the label", "cut-line", "cut line",
+               "must print and attach this label", "attach the label to the parcel", "attach this label to your parcel")
 
 
 def _is_label_sheet(page):
-    """An A4 page whose text has the 'print this sheet / cut out the label' instructions."""
+    """An A4 page that says InPost and has the 'print this sheet / cut out the label' instructions."""
     w, h = sorted((page.rect.width / 72 * 25.4, page.rect.height / 72 * 25.4))
     if not (195 <= w <= 225 and 280 <= h <= 310):            # A4 is 210 x 297 mm
         return False
     text = " ".join(page.get_text().lower().replace("’", "'").split())
-    return any(k in text for k in SHEET_STRONG) or sum(k in text for k in SHEET_HINTS) >= 2
+    return SHEET_REQUIRED in text and any(k in text for k in SHEET_HINTS)
 
 
 def _find_label(page, dpi=50, gap_mm=15):
