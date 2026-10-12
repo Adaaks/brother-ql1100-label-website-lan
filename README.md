@@ -17,7 +17,7 @@
 - **Live printer status.** It shows when there are no labels, the lid is open, the roll ran out, there's a cutter jam, or the printer is off. Printing is blocked with a clear message instead of failing silently.
 - **History.** Your last 30 prints, with true-size thumbnails, a zoomable close-up, and one-click print again or edit.
 - **Print animation.** The label feeds out of a drawn QL-1100 at the printer's real speed.
-- **Working Feed and Cut buttons.** Feed and Cut work from the drawn printer. Feed pushes blank tape out without cutting (handy after loading a new roll). Cut uses the QL-1100's own cut command to cut instantly, with no printing and no wasted tape. Nothing extra is needed: the commands are built into the printer.
+- **Working Feed and Cut buttons.** Click the Feed and Cut buttons on the drawn printer and they act exactly like the buttons on the real QL-1100. **Feed** pushes blank tape out without cutting (handy after loading a new roll), and you can watch it hang out of the printer. **Cut** cuts instantly with the printer's own cutter, with no printing and no wasted tape. Nothing extra is needed, because these commands are built into the printer.
 - **Works on phones.** The layout is responsive and dark-themed.
 - **Light on resources.** It uses about 70 MB of RAM, ~0% CPU when idle and about 0.1% while someone has the page open. It starts with Windows and restarts itself if it ever crashes.
 
