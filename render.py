@@ -4,7 +4,9 @@ Everything here works in printer dots (300 dpi). The returned canvases are exact
 the roll's print width across, and either an automatic length (continuous rolls) or the label's
 fixed print length (die-cut and round labels).
 """
+import base64
 import glob
+import io
 import json
 import os
 from functools import lru_cache
@@ -222,13 +224,127 @@ def _wrap(style, para, max_w):
 
 
 def _has_content(b):
+    kind = b.get("type", "text")
+    if kind == "code":
+        return bool(str(b.get("ssid" if b.get("kind") == "wifi" else "data", "")).strip())
+    if kind == "image":
+        return bool(b.get("src"))
     return bool(str(b.get("text", "")).strip())
+
+
+# --------------------------------------------------------------------------- barcodes, QR codes, pictures
+# These sit in a text label as their own rows. Codes are drawn module by module in whole printer dots so
+# they stay pixel-sharp and scan reliably; `size` is in mm (QR side / bar height / picture height).
+
+BARCODES = {"code128": "Code 128", "ean13": "EAN-13", "upca": "UPC-A", "code39": "Code 39"}
+
+
+def _wifi_payload(b):
+    esc = lambda v: "".join("\\" + c if c in '\;,:"' else c for c in str(v))
+    sec = {"WPA": "WPA", "WEP": "WEP", "nopass": "nopass"}.get(b.get("security"), "WPA")
+    out = f"WIFI:T:{sec};S:{esc(b.get('ssid', ''))};"
+    if sec != "nopass":
+        out += f"P:{esc(b.get('password', ''))};"
+    if b.get("hidden"):
+        out += "H:true;"
+    return out + ";"
+
+
+def _qr_image(data, side, max_w):
+    import segno
+    try:
+        q = segno.make(data, error="m", micro=False)
+    except Exception as e:
+        raise RenderError("That's too much for one QR code.") from e
+    rows = list(q.matrix)
+    n = len(rows)
+    box = max(2, side // n)
+    if max_w:
+        box = min(box, max(2, max_w // n))
+    img = Image.new("L", (n * box, n * box), 255)
+    d = ImageDraw.Draw(img)
+    for y, row in enumerate(rows):
+        for x, v in enumerate(row):
+            if v:
+                d.rectangle([x * box, y * box, x * box + box - 1, y * box + box - 1], fill=0)
+    return img
+
+
+def _barcode_image(b, height, scale, max_w):
+    import barcode
+    from barcode.codex import Code39
+    fmt, data = b.get("format", "code128"), str(b.get("data", "")).strip()
+    try:
+        code = Code39(data, add_checksum=False) if fmt == "code39" else barcode.get(fmt, data)
+        modules = code.build()[0]
+        human = code.get_fullcode()
+    except Exception:
+        need = {"ean13": "12 or 13 digits", "upca": "11 or 12 digits", "code39": "letters A-Z, digits and - . $ / + % space"}
+        raise RenderError(f"{BARCODES.get(fmt, fmt)} needs {need.get(fmt, 'plain text')}.")
+    quiet = 10                                     # blank modules either side so scanners find the start
+    mod = max(2, round(height / 40))               # bar width in printer dots, in proportion to the height
+    if max_w:
+        mod = min(mod, max_w // (len(modules) + 2 * quiet))
+    if mod < 1:
+        raise RenderError("That barcode is too long for this label - shorten it or use a wider roll.")
+    w = (len(modules) + 2 * quiet) * mod
+    bars = Image.new("L", (w, height), 255)
+    d = ImageDraw.Draw(bars)
+    for i, m in enumerate(modules):
+        if m == "1":
+            x = (quiet + i) * mod
+            d.rectangle([x, 0, x + mod - 1, height - 1], fill=0)
+    if not b.get("show_text", True):
+        return bars
+    st = Style({"font": "Arial", "size": max(7.0, height / DPI * 72 * 0.3 / scale)}, scale)
+    txt = st.render(human)
+    out = Image.new("L", (w, height + st.pitch), 255)
+    out.paste(bars, (0, 0))
+    out.paste(txt, ((w - txt.width) // 2, height + max(1, st.pitch // 10)))
+    return out
+
+
+def _picture_image(b, height, max_w):
+    src = str(b.get("src", ""))
+    try:
+        raw = base64.b64decode(src.split(",", 1)[1] if src.startswith("data:") else src)
+        img = Image.open(io.BytesIO(raw))
+        img.load()
+    except Exception as e:
+        raise RenderError("That picture couldn't be read.") from e
+    if img.mode in ("RGBA", "LA", "P"):
+        img = img.convert("RGBA")
+        bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
+        img = Image.alpha_composite(bg, img)
+    img = img.convert("L")
+    w = max(1, round(img.width * height / img.height))
+    if max_w and w > max_w:
+        w, height = max_w, max(1, round(img.height * max_w / img.width))
+    img = img.resize((w, height), Image.LANCZOS)
+    if b.get("photo"):
+        return img.convert("1", dither=Image.FLOYDSTEINBERG).convert("L")
+    return img.point(lambda v: 0 if v < 140 else 255)
+
+
+def _graphic_row(b, scale, max_w):
+    """A barcode / QR code / picture block as one row image."""
+    size = max(1, round(dots(min(200.0, max(3.0, float(b.get("size", 20))))) * scale))
+    if b.get("type") == "image":
+        return _picture_image(b, size, max_w)
+    if b.get("kind") == "barcode":
+        return _barcode_image(b, size, scale, max_w)
+    data = _wifi_payload(b) if b.get("kind") == "wifi" else str(b.get("data", ""))
+    return _qr_image(data, size, max_w)
 
 
 def _layout(blocks, scale, wrap_w, box=0):
     """Stacks every block's lines (aligned within `box` px if wider). Returns (image, widest line px, total height px)."""
     rows = []      # (image, align, pitch)
     for b in blocks:
+        if b.get("type") in ("code", "image"):
+            im = _graphic_row(b, scale, wrap_w or box or None)
+            rows.append((im, b.get("align", "center"), im.height + max(1, round(dots(1.5) * scale))))
+            continue
         st = Style(b, scale)
         for para in str(b.get("text", "")).replace("\r", "").split("\n"):
             for line in (_wrap(st, para, wrap_w) if wrap_w else [para]):

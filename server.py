@@ -200,6 +200,8 @@ def _title(payload):
         up = uploads.get((payload.get("file") or {}).get("id")) or {}
         return up.get("name") or "Uploaded label"
     for b in (payload.get("text") or {}).get("blocks", []):
+        if b.get("type") in ("code", "image"):
+            continue
         line = next((l.strip() for l in str(b.get("text", "")).splitlines() if l.strip()), "")
         if line:
             return line
@@ -409,6 +411,54 @@ def history_reprint(hid):
     if job["state"] != "error":
         history.bump(hid)
     return jsonify(_public(job))
+
+
+# ---------------------------------------------------------------- saved designs
+DESIGNS_FILE = os.path.join(BASE, "designs.json")
+_designs_lock = threading.Lock()
+
+
+def _load_designs():
+    try:
+        with open(DESIGNS_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return []
+
+
+@app.get("/api/designs")
+def designs_list():
+    return jsonify(_load_designs())
+
+
+@app.post("/api/designs")
+def designs_save():
+    """Saves a text label design under a name (the same name replaces the old one)."""
+    p = request.get_json(force=True, silent=True) or {}
+    name = str(p.get("name", "")).strip()[:60]
+    spec = p.get("spec")
+    if not name or not isinstance(spec, dict) or not spec.get("blocks"):
+        return _err("Give the design a name first.")
+    with _designs_lock:
+        items = [d for d in _load_designs() if d["name"].lower() != name.lower()]
+        items.insert(0, {"id": uuid.uuid4().hex[:12], "name": name, "t": time.time(), "spec": spec})
+        tmp = DESIGNS_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(items[:200], f)
+        os.replace(tmp, DESIGNS_FILE)
+    log.info("design saved: %s from %s", name, request.remote_addr)
+    return jsonify(items)
+
+
+@app.delete("/api/designs/<did>")
+def designs_delete(did):
+    with _designs_lock:
+        items = [d for d in _load_designs() if d["id"] != did]
+        tmp = DESIGNS_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(items, f)
+        os.replace(tmp, DESIGNS_FILE)
+    return jsonify(items)
 
 
 @app.delete("/api/history/<hid>")

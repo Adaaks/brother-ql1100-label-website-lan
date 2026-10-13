@@ -162,6 +162,29 @@ textarea.text:focus { border-color: var(--accent-line); }
 textarea.text::placeholder { color: var(--dim); }
 .add-line { width: 100%; height: 46px; border-radius: var(--r-md); border: 1.5px dashed var(--line-3); background: none; color: var(--muted); font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: .2s; }
 .add-line:hover { border-color: var(--accent-line); color: var(--text); background: var(--accent-soft); }
+.add-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.add-row .add-line { height: 42px; font-size: 13px; gap: 6px; white-space: nowrap; }
+.in { height: 36px; min-width: 0; padding: 0 11px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--field); color: var(--text); font: inherit; font-size: 13.5px; outline: none; }
+.in:focus { border-color: var(--accent-line); }
+.in::placeholder { color: var(--dim); }
+.in.grow { flex: 1 1 140px; }
+.fields2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.code-fields { margin-top: 6px; }
+.code-fields > * + * { margin-top: 6px; }
+.code-fields + .bar, .img-row + .bar { margin-top: 6px; }
+textarea.text.code-data { margin-top: 0; min-height: 52px; font-size: 14px; }
+.chk { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); cursor: pointer; user-select: none; }
+.chk input { width: 15px; height: 15px; margin: 0; accent-color: #8b7bff; cursor: pointer; }
+.mini-lbl { font-size: 12px; color: var(--muted); margin-right: 2px; }
+.img-thumb { width: 64px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 8px; background: #fff; color: #9aa0ab; overflow: hidden; }
+.img-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ds-save { display: flex; gap: 8px; }
+.ds-list { display: grid; gap: 8px; margin-top: 16px; }
+.ds-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.ds-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ds-txt b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-txt span { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-empty { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 
 /* ------------------------------------------------------------------ font picker */
 .fontpop { position: fixed; z-index: 70; width: 330px; max-height: 440px; display: flex; flex-direction: column; background: rgba(18, 20, 28, .97); border: 1px solid var(--line-2); border-radius: 16px; box-shadow: 0 30px 80px -16px rgba(0, 0, 0, .95); backdrop-filter: blur(20px); overflow: hidden; opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top left; pointer-events: none; transition: opacity .16s, transform .16s; }
@@ -418,9 +441,14 @@ body.dragging .drag-overlay { opacity: 1; }
     <div class="panel-scroll" id="editorScroll">
 
       <section class="pane" id="pane-text">
-        <div class="sect"><h3>Your text</h3><button class="link" id="resetText" type="button"><i data-i="reset" data-s="14"></i>Reset</button></div>
+        <div class="sect"><h3>Your text</h3><span><button class="link" id="openDesigns" type="button" title="Save this design or load a saved one"><i data-i="bookmark" data-s="14"></i>Designs</button><button class="link" id="resetText" type="button"><i data-i="reset" data-s="14"></i>Reset</button></span></div>
         <div id="blocks"></div>
-        <button class="add-line" id="addBlock" type="button"><i data-i="plus"></i>Add another text</button>
+        <div class="add-row">
+          <button class="add-line" id="addBlock" type="button" title="Add another line of text"><i data-i="plus"></i>Text</button>
+          <button class="add-line" id="addCode" type="button" title="Add a QR code, Wi-Fi QR code or barcode"><i data-i="qr"></i>Barcode / QR</button>
+          <button class="add-line" id="addImage" type="button" title="Add a logo or picture"><i data-i="image"></i>Image</button>
+        </div>
+        <input type="file" id="imgPick" accept="image/*" hidden>
 
         <div class="sect"><h3>Layout</h3></div>
         <div class="card">
@@ -633,6 +661,15 @@ body.dragging .drag-overlay { opacity: 1; }
     <div class="zoom-hint">Ctrl + scroll to zoom &middot; drag to move around &middot; double-click to zoom in or back out</div>
   </div>
 </div>
+<div class="modal" id="designsModal" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-label="Saved designs" style="width: min(560px, 100%)">
+    <div class="modal-head"><div><h3>Saved designs</h3><p>Save the label you've made on the Text tab and load it again any time, from any device.</p></div><button class="icon-btn" data-close type="button" aria-label="Close"><i data-i="x"></i></button></div>
+    <div class="modal-body">
+      <div class="ds-save"><input class="in grow" id="dsName" maxlength="60" placeholder="Name this design" autocomplete="off"><button class="btn primary" id="dsSave" type="button"><i data-i="bookmark" data-s="15"></i>Save</button></div>
+      <div class="ds-list" id="dsList"></div>
+    </div>
+  </div>
+</div>
 <div class="modal" id="cropModal" aria-hidden="true">
   <div class="modal-card" role="dialog" aria-label="Crop">
     <div class="modal-head"><div><h3>Crop to your label</h3><p>Drag a box around the part of the page you want to print. It applies to every page.</p></div><button class="icon-btn" data-close type="button" aria-label="Close"><i data-i="x"></i></button></div>
@@ -681,6 +718,10 @@ const P = {
   up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/>',
+  qr: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2.5v2.5H14zM17.5 17.5H20V20h-2.5zM14 20h1M20 14v1"/>',
+  image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m20.5 16-5-5-8.5 8.5"/>',
+  bookmark: '<path d="M7 4h10a1 1 0 0 1 1 1v15l-6-3.8L6 20V5a1 1 0 0 1 1-1z"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
@@ -847,8 +888,9 @@ function renderBlocks() {
   B.forEach((b, i) => {
     const el = document.createElement("div");
     el.className = "block";
+    if (b.type === "code" || b.type === "image") { buildGraphicBlock(el, b, i, B); wrap.appendChild(el); return; }
     el.innerHTML = `
-      <div class="block-head"><span class="block-num">Text ${i + 1}</span><div class="mini-actions">
+      <div class="block-head"><span class="block-num">Text ${B.slice(0, i + 1).filter(x => !x.type || x.type === "text").length}</span><div class="mini-actions">
         ${i > 0 ? `<button type="button" class="icon-btn" data-act="up" title="Move up">${ic("up", 15)}</button>` : ""}
         ${i < B.length - 1 ? `<button type="button" class="icon-btn" data-act="down" title="Move down">${ic("down", 15)}</button>` : ""}
         <button type="button" class="icon-btn" data-act="dup" title="Duplicate">${ic("copy", 15)}</button>
@@ -924,6 +966,140 @@ $("#addBlock").addEventListener("click", () => {
   renderBlocks();
   const tas = $$("#blocks textarea"); tas[tas.length - 1].focus();
   changed();
+});
+
+// ---- barcodes, QR codes and pictures: their own cards in the text label
+const rollK = () => (MEDIA.print_w_mm || 98.55) / 98.55;
+const defCodeSize = kind => Math.max(kind === "barcode" ? 5 : 8, Math.round((kind === "barcode" ? 12 : 22) * rollK()));
+const FORMATS = { code128: ["Code 128", "Any text or number"], ean13: ["EAN-13", "12 digits"], upca: ["UPC-A", "11 digits"], code39: ["Code 39", "Capitals, digits, - . / + % $"] };
+function blockActions(el, i, B, b) {
+  $$("[data-act]", el).forEach(x => x.addEventListener("click", () => {
+    const a = x.dataset.act;
+    if (a === "up") B.splice(i - 1, 0, B.splice(i, 1)[0]);
+    if (a === "down") B.splice(i + 1, 0, B.splice(i, 1)[0]);
+    if (a === "dup") B.splice(i + 1, 0, JSON.parse(JSON.stringify(b)));
+    if (a === "del") B.splice(i, 1);
+    renderBlocks(); changed(true);
+  }));
+}
+function buildGraphicBlock(el, b, i, B) {
+  const isImg = b.type === "image";
+  const title = isImg ? "Image" : { wifi: "Wi-Fi QR code", barcode: "Barcode" }[b.kind] || "QR code";
+  el.innerHTML = `
+    <div class="block-head"><span class="block-num">${title}</span><div class="mini-actions">
+      ${i > 0 ? `<button type="button" class="icon-btn" data-act="up" title="Move up">${ic("up", 15)}</button>` : ""}
+      ${i < B.length - 1 ? `<button type="button" class="icon-btn" data-act="down" title="Move down">${ic("down", 15)}</button>` : ""}
+      <button type="button" class="icon-btn" data-act="dup" title="Duplicate">${ic("copy", 15)}</button>
+      ${B.length > 1 ? `<button type="button" class="icon-btn danger" data-act="del" title="Remove">${ic("trash", 15)}</button>` : ""}
+    </div></div>` + (isImg
+    ? `<div class="bar img-row"><div class="img-thumb">${b.src ? `<img alt="" src="${b.src}">` : ic("image", 22)}</div>
+        <button type="button" class="btn sm pick">${b.src ? "Change picture" : "Choose picture"}</button>
+        <label class="chk" title="Shade the picture with dots - best for photos"><input type="checkbox" data-f="photo"${b.photo ? " checked" : ""}>Photo</label></div>`
+    : `<div class="bar"><div class="seg kind" role="group" aria-label="Type"><button type="button" data-v="qr">QR code</button><button type="button" data-v="wifi">Wi-Fi</button><button type="button" data-v="barcode">Barcode</button></div></div>
+       <div class="code-fields"></div>`) + `
+    <div class="bar"><span class="mini-lbl">${isImg || b.kind === "barcode" ? "Height" : "Size"}</span>
+      <div class="stepper gsize"><button type="button" data-d="-1" aria-label="Smaller">−</button><input type="number" inputmode="decimal" aria-label="Size"><span class="unit">mm</span><button type="button" data-d="1" aria-label="Bigger">+</button></div>
+      <div class="seg align" role="group" aria-label="Alignment"><button type="button" data-v="left" title="Align left">${ic("alignL")}</button><button type="button" data-v="center" title="Center">${ic("alignC")}</button><button type="button" data-v="right" title="Align right">${ic("alignR")}</button></div></div>`;
+  blockActions(el, i, B, b);
+  stepper($(".gsize", el), { get: () => b.size, set: v => { b.size = v; changed(); }, step: 1, min: 3, max: 200, dec: 0 });
+  seg($(".align", el), () => b, "align");
+  const bindFields = (root, after) => $$("[data-f]", root).forEach(x => x.addEventListener(x.type === "checkbox" || x.tagName === "SELECT" ? "change" : "input", () => {
+    b[x.dataset.f] = x.type === "checkbox" ? x.checked : x.value;
+    if (after) after(x.dataset.f);
+    changed();
+  }));
+  if (isImg) { $(".pick", el).addEventListener("click", () => pickImage(b)); bindFields(el); return; }
+  const box = $(".code-fields", el);
+  const fields = () => {
+    const v = k => esc(String(b[k] ?? ""));
+    box.innerHTML = b.kind === "wifi"
+      ? `<div class="fields2"><input class="in" data-f="ssid" placeholder="Network name" value="${v("ssid")}" autocomplete="off" spellcheck="false"><input class="in" data-f="password" placeholder="Password" value="${v("password")}" autocomplete="off" spellcheck="false"></div>
+         <div class="bar"><label class="select" title="Security">${ic("lock", 15)}<select data-f="security"><option value="WPA">WPA / WPA2 / WPA3</option><option value="WEP">WEP</option><option value="nopass">No password</option></select></label><label class="chk"><input type="checkbox" data-f="hidden"${b.hidden ? " checked" : ""}>Hidden network</label></div>`
+      : b.kind === "barcode"
+      ? `<div class="bar"><label class="select" title="Barcode type"><select data-f="format">${Object.entries(FORMATS).map(([k, [n]]) => `<option value="${k}"${k === b.format ? " selected" : ""}>${n}</option>`).join("")}</select></label><input class="in grow" data-f="data" placeholder="${FORMATS[b.format || "code128"][1]}" value="${v("data")}" autocomplete="off" spellcheck="false"></div>
+         <div class="bar"><label class="chk"><input type="checkbox" data-f="show_text"${b.show_text !== false ? " checked" : ""}>Show the number under it</label></div>`
+      : `<textarea class="text code-data" data-f="data" rows="2" placeholder="Text or link" spellcheck="false">${esc(b.data || "")}</textarea>`;
+    if (b.kind === "wifi") $("select", box).value = b.security || "WPA";
+    bindFields(box, f => { if (f === "format") $('[data-f="data"]', box).placeholder = FORMATS[b.format][1]; });
+  };
+  fields();
+  seg($(".kind", el), () => b, "kind", () => { b.size = defCodeSize(b.kind); b.format = b.format || "code128"; renderBlocks(); });
+}
+const imgPick = $("#imgPick");
+let imgTarget = null;
+function pickImage(b) { imgTarget = b; imgPick.value = ""; imgPick.click(); }
+function shrinkImage(file) {                      // keep pictures small: they travel with the design
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 1200 / Math.max(im.width, im.height)), c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(im.width * k)); c.height = Math.max(1, Math.round(im.height * k));
+      const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL("image/png"));
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error("unreadable")); };
+    im.src = url;
+  });
+}
+imgPick.addEventListener("change", async () => {
+  const f = imgPick.files[0], b = imgTarget;
+  if (!f || !b) return;
+  try { b.src = await shrinkImage(f); renderBlocks(); changed(); }
+  catch { toast("bad", "Couldn't open that picture", "Try a PNG or JPG file."); }
+});
+$("#addCode").addEventListener("click", () => {
+  T().blocks.push({ type: "code", kind: "qr", data: "", ssid: "", password: "", security: "WPA", hidden: false, format: "code128", show_text: true, size: defCodeSize("qr"), align: "center" });
+  renderBlocks();
+  const tas = $$("#blocks .code-data"); if (tas.length) tas[tas.length - 1].focus();
+  changed();
+});
+$("#addImage").addEventListener("click", () => {
+  const b = { type: "image", src: "", size: Math.max(5, Math.round(15 * rollK())), align: "center", photo: false };
+  T().blocks.push(b); renderBlocks(); changed(); pickImage(b);
+});
+
+// ---- saved designs (kept on the PC, so every device sees them)
+let DESIGNS = [];
+const designSummary = sp => {
+  const bl = sp.blocks || [], first = bl.find(b => (!b.type || b.type === "text") && String(b.text || "").trim());
+  const extras = [bl.some(b => b.type === "code") && "code", bl.some(b => b.type === "image") && "picture"].filter(Boolean);
+  return (first ? String(first.text).trim().split("\n")[0].slice(0, 40) : "") + (extras.length ? (first ? " + " : "") + extras.join(" + ") : "");
+};
+function renderDesigns() {
+  $("#dsList").innerHTML = DESIGNS.length ? DESIGNS.map(d => `<div class="ds-item">
+      <div class="ds-txt"><b>${esc(d.name)}</b><span>${esc(designSummary(d.spec))} · saved ${ago(d.t).toLowerCase()}</span></div>
+      <button class="btn sm" type="button" data-load="${d.id}">Load</button>
+      <button class="icon-btn danger" type="button" data-del="${d.id}" title="Delete">${ic("trash", 15)}</button></div>`).join("")
+    : `<p class="ds-empty">No saved designs yet - make a label, name it above and press Save.</p>`;
+}
+async function designsCall(url, opts) {
+  try {
+    const r = await fetch(url, Object.assign({ cache: "no-store" }, opts)), j = await r.json();
+    if (!r.ok) throw new Error(j.error || "Couldn't save that");
+    DESIGNS = j; renderDesigns(); return true;
+  } catch (e) { toast("bad", "Saved designs", e.message); return false; }
+}
+$("#openDesigns").addEventListener("click", () => { openModal("designsModal"); designsCall("/api/designs"); });
+async function saveDesign() {
+  const name = $("#dsName").value.trim();
+  if (!name) { $("#dsName").focus(); toast("info", "Give the design a name first"); return; }
+  const spec = JSON.parse(JSON.stringify(S.text));
+  spec.blocks.forEach(b => delete b.starter);
+  if (await designsCall("/api/designs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, spec }) })) {
+    $("#dsName").value = ""; toast("ok", `Saved "${name}"`, "Load it again from Designs on any device.");
+  }
+}
+$("#dsSave").addEventListener("click", saveDesign);
+$("#dsName").addEventListener("keydown", e => { if (e.key === "Enter") saveDesign(); });
+$("#dsList").addEventListener("click", e => {
+  const ld = e.target.closest("[data-load]"), del = e.target.closest("[data-del]");
+  if (ld) {
+    const d = DESIGNS.find(x => x.id === ld.dataset.load); if (!d) return;
+    S.text = Object.assign(DEF_TEXT(), JSON.parse(JSON.stringify(d.spec)));
+    renderBlocks(); textSync.forEach(f => f()); setTab("text"); changed(true);
+    closeModal("designsModal"); toast("info", `Loaded "${d.name}"`);
+  }
+  if (del) designsCall(`/api/designs/${del.dataset.del}`, { method: "DELETE" });
 });
 
 const textSync = [
@@ -1645,7 +1821,7 @@ function applyMedia(rollChanged) {
   const def = defSize();                          // text still at the old roll's default size follows the new roll
   if (def !== lastDefSize) {
     let touched = false;
-    S.text.blocks.forEach(b => { if (b.size === lastDefSize) { b.size = def; touched = true; } });
+    S.text.blocks.forEach(b => { if ((!b.type || b.type === "text") && b.size === lastDefSize) { b.size = def; touched = true; } });
     lastDefSize = def;
     if (touched) { renderBlocks(); if (!rollChanged) changed(true); }
   }

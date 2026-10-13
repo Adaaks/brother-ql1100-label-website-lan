@@ -6,3 +6,5 @@ history/
 media.json
 fonts_cache.json
 *.pyc
+designs.json
+designs.json.tmp

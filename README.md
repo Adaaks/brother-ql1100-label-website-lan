@@ -14,6 +14,8 @@ The on-screen printer works like the real one too: its **Feed** button pushes ou
 
 - **Live preview that matches the print exactly.** It's drawn at the printer's real 300 dpi, with the real margins.
 - **Text labels** using any font installed on the PC (the font picker shows each one in its own style), plus size, bold, italic, underline, strikethrough, alignment and line spacing. Text can run across the label or along its length. Auto-size, a border with adjustable thickness, and white-on-black are also available.
+- **Barcodes, QR codes and pictures.** Add a QR code (any text or link), a **Wi-Fi QR code** that phones scan to join your network, a barcode (Code 128, EAN-13, UPC-A, Code 39) or a logo/picture to any text label. Codes are printed pixel-sharp so they scan reliably.
+- **Saved designs.** Save a label you've made by name and load it again later, from any device.
 - **Fast or Best quality.** Fast prints noticeably quicker, exactly like Brother's own driver; Best takes extra care over every line. The print bar shows how much tape a print uses and roughly how long it will take.
 - **No wasted tape.** Continuous labels are cut right after the content, down to the QL-1100's 25 mm minimum, and every label is cut automatically. On die-cut and round rolls you choose: cut after each label, or once at the end so a batch stays together on its backing.
 - **Shipping labels.** Upload a PDF or image (drag and drop or paste works too). It trims, rotates and fits the label to the roll, and you can crop to the part you want. Multi-page PDFs print one label per page.
