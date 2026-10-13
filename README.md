@@ -1,4 +1,4 @@
-# Brother QL-1100 Label Website
+# Brother QL-1100 Label Website LAN
 
 **A complete label-printing website for the Brother QL-1100 that replaces Brother's own P-touch software.** Design text labels, print shipping labels from a PDF or photo, and see exactly what will come out before you print, all in your browser.
 
