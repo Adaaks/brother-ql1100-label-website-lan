@@ -441,6 +441,8 @@ body.dragging .drag-overlay { opacity: 1; }
           <div class="row"><span class="row-text"><b>Padding</b><small>Space at the sides of the label</small></span>
             <div class="stepper" id="tPad"><button type="button" data-d="-1" aria-label="Less">−</button><input type="number" inputmode="decimal" aria-label="Padding"><span class="unit">mm</span><button type="button" data-d="1" aria-label="More">+</button></div></div>
           <label class="row"><span class="row-text"><b>Border</b><small>Rounded frame around the label</small></span><span class="switch"><input type="checkbox" id="tBorder"><span class="track"></span></span></label>
+          <div class="row" id="tBorderRow" hidden><span class="row-text"><b>Border thickness</b><small>How thick the frame is</small></span>
+            <div class="stepper" id="tBorderW"><button type="button" data-d="-1" aria-label="Thinner">−</button><input type="number" inputmode="decimal" aria-label="Border thickness"><span class="unit">mm</span><button type="button" data-d="1" aria-label="Thicker">+</button></div></div>
           <label class="row"><span class="row-text"><b>White on black</b><small>Inverts the whole label</small></span><span class="switch"><input type="checkbox" id="tInvert"><span class="track"></span></span></label>
         </div>
       </section>
@@ -449,7 +451,7 @@ body.dragging .drag-overlay { opacity: 1; }
         <input type="file" id="fileInput" accept=".pdf,application/pdf,image/*" hidden>
         <div class="drop" id="drop" role="button" tabindex="0">
           <div class="drop-ico"><i data-i="upload" data-s="26"></i></div>
-          <b>Drop your shipping label</b>
+          <b>Drop your label</b>
           <span>PDF or image · click to browse · or paste it</span>
         </div>
         <div class="filecard" id="fileCard" hidden>
@@ -499,6 +501,8 @@ body.dragging .drag-overlay { opacity: 1; }
           <div class="row"><span class="row-text"><b>Padding</b><small>Space around the label</small></span>
             <div class="stepper" id="fPad"><button type="button" data-d="-1" aria-label="Less">−</button><input type="number" inputmode="decimal" aria-label="Padding"><span class="unit">mm</span><button type="button" data-d="1" aria-label="More">+</button></div></div>
           <label class="row"><span class="row-text"><b>Border</b></span><span class="switch"><input type="checkbox" id="fBorder"><span class="track"></span></span></label>
+          <div class="row" id="fBorderRow" hidden><span class="row-text"><b>Border thickness</b><small>How thick the frame is</small></span>
+            <div class="stepper" id="fBorderW"><button type="button" data-d="-1" aria-label="Thinner">−</button><input type="number" inputmode="decimal" aria-label="Border thickness"><span class="unit">mm</span><button type="button" data-d="1" aria-label="Thicker">+</button></div></div>
           <label class="row"><span class="row-text"><b>Invert colours</b></span><span class="switch"><input type="checkbox" id="fInvert"><span class="track"></span></span></label>
         </div>
       </section>
@@ -698,8 +702,8 @@ const hydrate = (root = document) => $$("i[data-i]", root).forEach(el => { if (!
 const defSize = () => Math.max(6, Math.round(50 * (MEDIA.print_w_mm || 98.55) / 98.55));
 let lastDefSize = defSize();
 const DEF_BLOCK = () => ({ text: "", font: "Arial", size: defSize(), bold: false, italic: false, underline: false, strike: false, align: "center", line_spacing: 1.0 });
-const DEF_TEXT = () => ({ blocks: [Object.assign(DEF_BLOCK(), { text: "Welcome", bold: true, size: defSize(), starter: true })], orientation: "horizontal", fit: false, length_mm: 0, fixed_len: 50, padding_mm: 1.5, border: false, invert: false });
-const DEF_FILE = () => ({ rotate: "auto", size: "fit", percent: 60, align: "center", trim: true, dither: false, darkness: 50, padding_mm: 1, border: false, invert: false });
+const DEF_TEXT = () => ({ blocks: [Object.assign(DEF_BLOCK(), { text: "Welcome", bold: true, size: defSize(), starter: true })], orientation: "horizontal", fit: false, length_mm: 0, fixed_len: 50, padding_mm: 1.5, border: false, border_mm: 0.6, invert: false });
+const DEF_FILE = () => ({ rotate: "auto", size: "fit", percent: 60, align: "center", trim: true, dither: false, darkness: 50, padding_mm: 1, border: false, border_mm: 0.6, invert: false });
 const S = {
   tab: store.get("tab", "text"),
   text: DEF_TEXT(),                                   // text starts fresh each visit
@@ -921,7 +925,10 @@ const textSync = [
   bindSwitch("tBorder", T, "border"),
   bindSwitch("tInvert", T, "invert"),
   stepper($("#tPad"), { get: () => T().padding_mm, set: v => { T().padding_mm = v; changed(); }, step: 0.5, min: 0, max: 20 }),
+  stepper($("#tBorderW"), { get: () => T().border_mm ?? 0.6, set: v => { T().border_mm = v; changed(); }, step: 0.1, min: 0.2, max: 5 }),
+  () => { $("#tBorderRow").hidden = !T().border; },
 ];
+$("#tBorder").addEventListener("change", () => { $("#tBorderRow").hidden = !T().border; });
 const lenSync = stepper($("#lenStep"), { get: () => T().fixed_len, set: v => { T().fixed_len = v; if (T().length_mm > 0) T().length_mm = v; changed(); }, step: 5, min: 26, max: 2000, dec: 0 });
 function syncFixed() {
   const on = T().length_mm > 0;
@@ -951,7 +958,10 @@ const fileSync = [
   bindSwitch("fBorder", F, "border"),
   bindSwitch("fInvert", F, "invert"),
   stepper($("#fPad"), { get: () => F().padding_mm, set: v => { F().padding_mm = v; changed(); }, step: 0.5, min: 0, max: 20 }),
+  stepper($("#fBorderW"), { get: () => F().border_mm ?? 0.6, set: v => { F().border_mm = v; changed(); }, step: 0.1, min: 0.2, max: 5 }),
+  () => { $("#fBorderRow").hidden = !F().border; },
 ];
+$("#fBorder").addEventListener("change", () => { $("#fBorderRow").hidden = !F().border; });
 syncSizeRows();
 try { localStorage.removeItem("lp_fileopts"); localStorage.removeItem("lp_text"); } catch {}   // saved by older versions
 $("#resetFile").addEventListener("click", () => {
@@ -1194,13 +1204,31 @@ function selectedLength() {
   const lens = j.pages.map(p => p.length_mm), avg = lens.reduce((a, b) => a + b, 0) / lens.length;
   return lens.reduce((a, l, i) => a + (S.file.exclude.includes(i) ? 0 : l), 0) + Math.max(0, j.total - j.pages.length) * avg;
 }
+// Print timings measured on the QL-1100 with a stopwatch, per quality mode: printing starts `startS` after pressing
+// Print (the printer receiving the job), then the "Welcome" label (25 mm) takes `welcomeS` to print and a 4x6"
+// postage label (152.4 mm) takes `postageS`; other lengths fall on the line between. The cut follows straight away.
+const timing = (startS, welcomeS, postageS) => {
+  const mmPerS = (152.4 - 25) / (postageS - welcomeS);
+  return { startS, mmPerS, feedBaseS: welcomeS - 25 / mmPerS, cutS: 0.5 };
+};
+const PRINT_TIMES = {
+  best: timing(1.5, 2, 7),
+  fast: timing(1.5, 1.71, 4.62),    // ~44 mm/s once printing, vs ~25 mm/s in Best
+};
+// Estimated time from pressing Print to the last cut, from the same timings as the animation
+function printSeconds(n, totalMm) {
+  const t = PRINT_TIMES[S.quality] || PRINT_TIMES.best;
+  return t.startS + n * t.feedBaseS + totalMm / t.mmPerS + Math.max(0, n - 1) * t.cutS;
+}
+const fmtSecs = s => s < 10 ? s.toFixed(1) + " s" : s < 60 ? Math.round(s) + " s" : `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`;
 function updateMeta() {
   const j = lastPreview, n = labelCount(), cont = MEDIA.kind === "continuous";
   if (!j) $("#dims").textContent = S.mode === "file" ? "No label uploaded" : "Nothing to print yet";
   else if (S.mode === "file" && S.file.pages > 1) $("#dims").textContent = `${selectedPages()} of ${S.file.pages} pages · ${cont ? MEDIA.width_mm + " mm roll" : MEDIA.name}`;
   else { const p = j.pages[0]; $("#dims").textContent = geomOf(p).label + (p.rotated ? " · along the length" : ""); }
   const total = selectedLength() * S.copies;
-  $("#usage").textContent = !n ? "" : cont ? `Uses ${total >= 1000 ? (total / 1000).toFixed(2) + " m" : Math.round(total) + " mm"} of tape` : `Uses ${n} label${n === 1 ? "" : "s"}`;
+  $("#usage").textContent = !n ? "" : (cont ? `Uses ${total >= 1000 ? (total / 1000).toFixed(2) + " m" : Math.round(total) + " mm"} of tape` : `Uses ${n} label${n === 1 ? "" : "s"}`)
+    + ` · about ${fmtSecs(printSeconds(n, total))} to print`;
   const badge = $("#copiesBadge");
   badge.hidden = !(j && S.copies > 1);
   badge.textContent = "×" + S.copies;
@@ -1210,7 +1238,7 @@ function updateMeta() {
   btn.title = STATUS.blocking ? STATUS.message : "";
   $("#zoomBtn").disabled = !j;
 }
-seg($("#quality"), () => S, "quality");
+seg($("#quality"), () => S, "quality", updateMeta);
 stepper($("#copies"), { get: () => S.copies, set: v => { S.copies = v; updateMeta(); }, step: 1, min: 1, max: 100, dec: 0 });
 
 // ------------------------------------------------------------------ printing + animation
@@ -1268,17 +1296,6 @@ async function runJob(send, pages, copies, n, animFn) {
 }
 let animTok = 0;
 const stopAnim = () => { animTok++; };
-// Print timings measured on the QL-1100 with a stopwatch, per quality mode: printing starts `startS` after pressing
-// Print (the printer receiving the job), then the "Welcome" label (25 mm) takes `welcomeS` to print and a 4x6"
-// postage label (152.4 mm) takes `postageS`; other lengths fall on the line between. The cut follows straight away.
-const timing = (startS, welcomeS, postageS) => {
-  const mmPerS = (152.4 - 25) / (postageS - welcomeS);
-  return { startS, mmPerS, feedBaseS: welcomeS - 25 / mmPerS, cutS: 0.5 };
-};
-const PRINT_TIMES = {
-  best: timing(1.5, 2, 7),
-  fast: timing(1.5, 1.71, 4.62),    // ~44 mm/s once printing, vs ~25 mm/s in Best
-};
 async function playPrint(pages, copies, done = Promise.resolve(true)) {
   if (reduceMotion || !pages.length) return;
   const my = ++animTok, alive = () => my === animTok;
@@ -1357,7 +1374,10 @@ function setFed(mm, ms = 0) {
   el.style.height = FED * scale() + "px";
 }
 // Scissors: the printer cuts right where the paper is (real cut command, nothing printed)
+let lastCutAt = 0;
 async function cutNow() {
+  if (Date.now() - lastCutAt < 2000) { toast("info", "Give the cutter a moment", "Wait a couple of seconds between cuts."); return; }
+  lastCutAt = Date.now();
   printing = true; setBtn("busy", "Cutting…");
   $("#status").dataset.state = "printing"; $("#statusText").textContent = "Cutting";
   const anim = cutAnim();

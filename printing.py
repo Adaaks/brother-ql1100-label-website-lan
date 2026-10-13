@@ -67,6 +67,7 @@ def build_raster(images, media, cut=True, best=True):
 
 # Cut right now, without printing or feeding: switch to P-touch Template mode, "^OP3" (perform printer
 # operation: cut), then back to raster mode. (P-touch Template Command Reference QL-1100, section 7.)
+CUT_GAP_S = 2.0                  # minimum seconds between two cuts (see Jobs.cut)
 CUT_NOW = b"\x00" * 200 + b"\x1b@" + b"\x1bia\x03" + b"^OP3" + b"\x1bia\x01"
 
 
@@ -368,7 +369,13 @@ class Jobs:
 
     def cut(self):
         """Cuts the tape where it is (e.g. blank paper fed with the Feed button). Sent straight over USB:
-        through the print queue a cut could hang there as "printing" and block the next job."""
+        through the print queue a cut could hang there as "printing" and block the next job.
+        Cuts are spaced at least CUT_GAP_S apart: many in quick succession (each one switches the printer
+        into P-touch Template mode and back) left the printer unable to print until it was turned off and on."""
+        now = time.monotonic()
+        if now - getattr(self, "_last_cut", -CUT_GAP_S) < CUT_GAP_S:
+            return {"id": None, "state": "error", "message": "Give the cutter a moment between cuts", "labels": 0, "spool_id": None}
+        self._last_cut = now
         jid = next(self._ids)
         ACTIVITY["what"] = "Cutting"
         job = {"id": jid, "state": "printing", "message": "Cutting...", "labels": 0, "created": time.time(), "spool_id": None}

@@ -346,15 +346,15 @@ def render_text(spec, media):
     x = (canvas_w - img.width) // 2 if vertical else pad
     y = (canvas_h - img.height) // 2
     canvas.paste(img, (x, y))
-    canvas = _finish(canvas, border, bool(spec.get("invert")), media.kind == "round")
+    canvas = _finish(canvas, border, bool(spec.get("invert")), media.kind == "round", spec.get("border_mm", 0.6))
     canvas.info["at_min"] = media.continuous and not fixed_lines and natural < min_lines
     return canvas, warnings, vertical
 
 
-def _finish(canvas, border, invert, round_label=False):
+def _finish(canvas, border, invert, round_label=False, border_mm=0.6):
     canvas = canvas.point(lambda v: 0 if v < 128 else 255)
     if border:
-        t = dots(0.6)
+        t = max(1, dots(min(5.0, max(0.2, float(border_mm)))))
         inset = dots(0.8)
         box = [inset, inset, canvas.width - 1 - inset, canvas.height - 1 - inset]
         if round_label:
@@ -589,7 +589,7 @@ def render_image(page, spec, media):
     align = spec.get("align", "center")
     x = {"left": pad, "right": pw - pad - img.width}.get(align, (pw - img.width) // 2)
     canvas.paste(img, (x, (length - img.height) // 2))
-    canvas = _finish(canvas, border, bool(spec.get("invert")), media.kind == "round")
+    canvas = _finish(canvas, border, bool(spec.get("invert")), media.kind == "round", spec.get("border_mm", 0.6))
     canvas.info["at_min"] = media.continuous and img.height + 2 * pad < media.min_lines
     return canvas, warnings
 
