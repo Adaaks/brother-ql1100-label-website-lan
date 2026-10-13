@@ -66,7 +66,7 @@ The on-screen printer works like the real one too: its **Feed** button pushes ou
 
 1. Download this project: click **Code → Download ZIP** above and unzip it somewhere permanent, for example `C:\labelprinter`. Or clone it:
    ```bash
-   git clone https://github.com/Adaaks/brother-ql1100-lan-print-server.git C:\labelprinter
+   git clone https://github.com/Adaaks/brother-ql1100-label-website-lan.git C:\labelprinter
    ```
 2. Double-click **`install.bat`**. It:
    - creates a private Python environment and installs the packages,
