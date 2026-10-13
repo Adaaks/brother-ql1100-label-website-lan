@@ -28,7 +28,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 HOSTNAME = "labelprinter"
 PORTS = [80, 8080]
 MAX_COPIES = 100
-MAX_PREVIEW_PAGES = 12
+MAX_PREVIEW_PAGES = 100
 HIST_DIR = os.path.join(BASE, "history")
 HIST_MAX = 100
 
