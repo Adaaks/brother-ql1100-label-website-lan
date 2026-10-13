@@ -694,8 +694,11 @@ const ic = (n, s = 16) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" f
 const hydrate = (root = document) => $$("i[data-i]", root).forEach(el => { if (!el.firstChild) el.innerHTML = ic(el.dataset.i, +(el.dataset.s || 16)); });
 
 // ------------------------------------------------------------------ state (defaults match the original site)
-const DEF_BLOCK = () => ({ text: "", font: "Arial", size: 50, bold: false, italic: false, underline: false, strike: false, align: "center", line_spacing: 1.0 });
-const DEF_TEXT = () => ({ blocks: [Object.assign(DEF_BLOCK(), { text: "Welcome", bold: true, size: 50, starter: true })], orientation: "horizontal", fit: false, length_mm: 0, fixed_len: 50, padding_mm: 1.5, border: false, invert: false });
+// Default text size scales with the roll: 50 on a 102 mm roll, proportionally smaller on narrower ones
+const defSize = () => Math.max(6, Math.round(50 * (MEDIA.print_w_mm || 98.55) / 98.55));
+let lastDefSize = defSize();
+const DEF_BLOCK = () => ({ text: "", font: "Arial", size: defSize(), bold: false, italic: false, underline: false, strike: false, align: "center", line_spacing: 1.0 });
+const DEF_TEXT = () => ({ blocks: [Object.assign(DEF_BLOCK(), { text: "Welcome", bold: true, size: defSize(), starter: true })], orientation: "horizontal", fit: false, length_mm: 0, fixed_len: 50, padding_mm: 1.5, border: false, invert: false });
 const DEF_FILE = () => ({ rotate: "auto", size: "fit", percent: 60, align: "center", trim: true, dither: false, darkness: 50, padding_mm: 1, border: false, invert: false });
 const S = {
   tab: store.get("tab", "text"),
@@ -722,13 +725,27 @@ function seg(el, obj, key, after) {
   btns.forEach(b => b.addEventListener("click", () => { obj()[key] = b.dataset.v; sync(); if (after) after(); changed(); }));
   sync(); return sync;
 }
+// +/- buttons: one step per click; holding one repeats, faster the longer it's held
+function holdRepeat(btn, fn) {
+  let t = null;
+  const stop = () => { clearTimeout(t); t = null; };
+  btn.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); stop(); fn();
+    let n = 0;
+    const tick = () => { fn(); n++; t = setTimeout(tick, Math.max(25, 120 - n * 8)); };
+    t = setTimeout(tick, 400);
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => btn.addEventListener(ev, stop));
+  btn.addEventListener("click", e => { if (e.detail === 0) fn(); });   // keyboard (Enter / Space)
+}
 function stepper(el, { get, set, step = 1, min = 0, max = 999, dec = 1 }) {
   const input = $("input", el);
   const fmt = v => String(+(+v).toFixed(dec));
   const put = v => { v = clamp(+(+v).toFixed(dec), min, max); set(v); input.value = fmt(v); };
   input.addEventListener("input", () => { const v = parseFloat(input.value); if (!isNaN(v) && v >= min && v <= max) set(v); });
   input.addEventListener("change", () => { const v = parseFloat(input.value); put(isNaN(v) ? get() : v); });
-  $$("button[data-d]", el).forEach(b => b.addEventListener("click", () => put(get() + (+b.dataset.d) * step)));
+  $$("button[data-d]", el).forEach(b => holdRepeat(b, () => put(get() + (+b.dataset.d) * step)));
   const sync = () => { input.value = fmt(get()); };
   sync(); return sync;
 }
@@ -813,7 +830,6 @@ $("#editorScroll").addEventListener("scroll", positionFontPop, { passive: true }
 window.addEventListener("resize", positionFontPop);
 
 // ------------------------------------------------------------------ text blocks
-const SIZE_STEPS = [6, 8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 96, 110, 128, 150, 180, 200, 240, 300, 360, 400];
 function renderBlocks() {
   const wrap = $("#blocks"), B = T().blocks;
   wrap.innerHTML = "";
@@ -876,8 +892,7 @@ function renderBlocks() {
     const setSize = v => { b.size = clamp(Math.round(v * 2) / 2, 4, 400); sizeIn.value = b.size; changed(); };
     sizeIn.addEventListener("input", () => { const v = parseFloat(sizeIn.value); if (v >= 4 && v <= 400) { b.size = v; changed(); } });
     sizeIn.addEventListener("change", () => setSize(parseFloat(sizeIn.value) || b.size));
-    $$(".size button", el).forEach(btn => btn.addEventListener("click", () => setSize(+btn.dataset.d > 0
-      ? (SIZE_STEPS.find(s => s > b.size) || 400) : ([...SIZE_STEPS].reverse().find(s => s < b.size) || 4))));
+    $$(".size button", el).forEach(btn => holdRepeat(btn, () => setSize(Math.round(b.size) + (+btn.dataset.d))));
     styleBtns.forEach(x => x.addEventListener("click", () => { b[x.dataset.k] = !b[x.dataset.k]; syncStyle(); styleTa(); changed(); }));
     seg($(".align", el), () => b, "align", styleTa);
     $("select", el).addEventListener("change", e => { b.line_spacing = parseFloat(e.target.value); changed(); });
@@ -1599,6 +1614,13 @@ function applyStatus(s) {
 }
 function applyMedia(rollChanged) {
   const cont = MEDIA.kind === "continuous";
+  const def = defSize();                          // text still at the old roll's default size follows the new roll
+  if (def !== lastDefSize) {
+    let touched = false;
+    S.text.blocks.forEach(b => { if (b.size === lastDefSize) { b.size = def; touched = true; } });
+    lastDefSize = def;
+    if (touched) { renderBlocks(); if (!rollChanged) changed(true); }
+  }
   $("#feed").style.width = (MEDIA.paper_w_mm / 101.6 * 60).toFixed(3) + "%";     // the drawing's slot fits a 102 mm roll
   $("#fixedRow").hidden = !cont;
   $('#sizeMode [data-v="fit"]').textContent = cont ? "Fit width" : "Fit label";
