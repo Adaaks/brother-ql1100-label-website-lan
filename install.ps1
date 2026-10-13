@@ -35,17 +35,14 @@ Write-Host "Installing packages (this takes a minute)..."
 & "$dir\venv\Scripts\python.exe" -m pip install --quiet --upgrade pip
 & "$dir\venv\Scripts\python.exe" -m pip install --quiet -r "$dir\requirements.txt"
 
-# 4. Start automatically when you log in to Windows
-$startup = [Environment]::GetFolderPath("Startup")
-$ws = New-Object -ComObject WScript.Shell
-$lnk = $ws.CreateShortcut("$startup\labelprinter.lnk")
-$lnk.TargetPath = "$dir\venv\Scripts\pythonw.exe"
-$lnk.Arguments = "`"$dir\run.pyw`""
-$lnk.WorkingDirectory = $dir
-$lnk.WindowStyle = 7
-$lnk.Description = "labelprinter server"
-$lnk.Save()
-Write-Host "Added to Windows startup."
+# 4. Start automatically as soon as you log in to Windows. A scheduled task starts within seconds;
+#    the Startup folder (used by older versions) is run late, after everything else, and could take minutes.
+Remove-Item "$([Environment]::GetFolderPath('Startup'))\labelprinter.lnk" -ErrorAction SilentlyContinue
+$action = New-ScheduledTaskAction -Execute "$dir\venv\Scripts\pythonw.exe" -Argument "`"$dir\run.pyw`"" -WorkingDirectory $dir
+$trigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -Priority 4 -MultipleInstances IgnoreNew
+Register-ScheduledTask -TaskName "labelprinter" -Description "labelprinter server (runs hidden)" -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
+Write-Host "Set to start when you log in to Windows."
 
 # 5. Firewall rule so other devices on your network can connect (asks for admin)
 Write-Host "Adding the firewall rule (approve the admin prompt)..."

@@ -65,7 +65,7 @@
    ```
 2. Double-click **`install.bat`**. It:
    - creates a private Python environment and installs the packages,
-   - adds the server to Windows startup (it runs hidden),
+   - sets the server to start (hidden) a few seconds after you log in to Windows,
    - asks for admin once to allow it through Windows Firewall on your **private** network,
    - starts the server.
 3. Open **http://labelprinter.local** on any device on the same network.
