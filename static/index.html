@@ -604,6 +604,12 @@ body.dragging .drag-overlay { opacity: 1; }
           <button type="button" data-v="best" title="Give priority to print quality - slower">Best</button>
         </div>
       </div>
+      <div class="copies quality" id="cutWrap" hidden><span class="lbl">Cut</span>
+        <div class="seg" id="cutMode">
+          <button type="button" data-v="each" title="Cut after every label">Each label</button>
+          <button type="button" data-v="end" title="Cut once after the last label - the labels stay together on the backing">At the end</button>
+        </div>
+      </div>
       <span class="usage" id="usage"></span>
       <button class="print-btn" id="printBtn" type="button" disabled><span class="pb-ico"><i data-i="printer" data-s="19"></i></span><span class="pb-txt">Print</span><kbd title="Shortcut: Ctrl + Enter (or Ctrl + P)">Ctrl + Enter</kbd></button>
     </div>
@@ -709,7 +715,8 @@ const S = {
   text: DEF_TEXT(),                                   // text starts fresh each visit
   file: Object.assign(DEF_FILE(), { id: null, name: "", pages: 0, auto: null, exclude: [], crop: null }),   // upload settings start fresh each visit
   copies: 1,
-  quality: "fast",          // "fast" (default) or "best", like P-touch's print quality setting
+  quality: "fast",
+  cut: "each",              // die-cut / round rolls: "each" label or once at the "end" (continuous always cuts each)          // "fast" (default) or "best", like P-touch's print quality setting
 };
 if (!["text", "file", "history"].includes(S.tab)) S.tab = "text";
 if (!Array.isArray(S.text.blocks) || !S.text.blocks.length) S.text.blocks = DEF_TEXT().blocks;
@@ -1239,6 +1246,7 @@ function updateMeta() {
   $("#zoomBtn").disabled = !j;
 }
 seg($("#quality"), () => S, "quality", updateMeta);
+seg($("#cutMode"), () => S, "cut");
 stepper($("#copies"), { get: () => S.copies, set: v => { S.copies = v; updateMeta(); }, step: 1, min: 1, max: 100, dec: 0 });
 
 // ------------------------------------------------------------------ printing + animation
@@ -1257,7 +1265,7 @@ async function doPrint() {
   const p = previewPayload(); if (!p) return;
   const keep = i => !(S.mode === "file" && S.file.exclude.includes(i));
   if (p.kind === "file") p.file.pages = [...Array(S.file.pages).keys()].filter(keep);
-  p.copies = S.copies; p.quality = S.quality;
+  p.copies = S.copies; p.quality = S.quality; p.cut = S.cut;
   const pages = lastPreview.pages.filter((_, i) => keep(i)).map(pg => ({ src: pg.png, g: geomOf(pg) }));
   await runJob(() => fetch("/api/print", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) }), pages, S.copies, labelCount());
 }
@@ -1334,7 +1342,7 @@ async function playPrint(pages, copies, done = Promise.resolve(true)) {
       rig.classList.remove("feeding");
       if (!alive()) break;
       if (failed || !alive()) break;                 // cut as soon as the label is out (unless the print failed)
-      await cutFx();
+      if (MEDIA.kind === "continuous" || S.cut !== "end" || c === shown - 1) await cutFx();
       if (!alive()) break;
       drops.push(out.animate([{ transform: "translateY(0) rotate(0deg)", opacity: 1 }, { transform: "translateY(130px) rotate(-5deg)", opacity: 0 }],
         { duration: 620, easing: "cubic-bezier(.55,0,.9,.4)", fill: "forwards" }).finished.then(() => out.remove()));
@@ -1598,7 +1606,7 @@ async function reprint(e) {
   if (printing) return;
   // the animation shows the saved label; if it was made for another roll the server re-makes it, so skip it
   const pages = (e.media || "102") === MEDIA.id ? geoms(e).slice(0, 12).map((g, n) => ({ src: `/api/history/${e.id}/${n}.png`, g })) : [];
-  await runJob(() => fetch(`/api/history/${e.id}/reprint?quality=${S.quality}`, { method: "POST" }), pages, e.copies, e.count * e.copies);
+  await runJob(() => fetch(`/api/history/${e.id}/reprint?quality=${S.quality}&cut=${S.cut}`, { method: "POST" }), pages, e.copies, e.count * e.copies);
 }
 function editEntry(e) {
   S.text = Object.assign(DEF_TEXT(), JSON.parse(JSON.stringify(e.spec)));
@@ -1643,6 +1651,7 @@ function applyMedia(rollChanged) {
   }
   $("#feed").style.width = (MEDIA.paper_w_mm / 101.6 * 60).toFixed(3) + "%";     // the drawing's slot fits a 102 mm roll
   $("#fixedRow").hidden = !cont;
+  $("#cutWrap").hidden = cont;                    // the cut choice only matters for die-cut / round labels
   $('#sizeMode [data-v="fit"]').textContent = cont ? "Fit width" : "Fit label";
   updateMeta();
   if (rollChanged) {

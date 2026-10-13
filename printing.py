@@ -28,8 +28,9 @@ MEDIA_FILE = os.path.join(BASE, "media.json")
 log = logging.getLogger("labelprinter")
 
 
-def build_raster(images, media, cut=True, best=True):
-    """Brother raster data for `images` (already sized for `media`). Every label is cut unless cut=False."""
+def build_raster(images, media, cut=True, best=True, each=True):
+    """Brother raster data for `images` (already sized for `media`). Every label is cut unless cut=False;
+    each=False cuts only once, after the last label (die-cut rolls: keeps the labels together on the backing)."""
     qlr = BrotherQLRaster(MODEL)
     qlr.exception_on_warning = True
     qlr.add_switch_mode()
@@ -53,7 +54,7 @@ def build_raster(images, media, cut=True, best=True):
         qlr.add_media_and_quality(im.height)
         qlr.add_autocut(cut)
         if cut:
-            qlr.add_cut_every(1)
+            qlr.add_cut_every(1 if each else min(255, len(images)))
         qlr.dpi_600 = False
         qlr.cut_at_end = cut
         qlr.two_color_printing = False
@@ -422,8 +423,8 @@ class Jobs:
         threading.Thread(target=finish, daemon=True).start()
         return job
 
-    def submit(self, images, media, title, cut=True, best=False):
-        data = build_raster(images, media, cut, best)
+    def submit(self, images, media, title, cut=True, best=False, each=True):
+        data = build_raster(images, media, cut, best, each or media.continuous)
         fed = 0 if cut else FED["mm"] + sum(media.geometry(im.height)["length_mm"] for im in images)
         job = self._send(data, title, len(images), on_sent=lambda: FED.update(mm=fed))
         if job["state"] != "error":

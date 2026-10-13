@@ -319,7 +319,8 @@ def do_print():
         return _err("That's too many labels for one job (max 300).")
     kind = payload.get("kind")
     best = payload.get("quality", "fast") == "best"
-    job = jobs.submit(labels * copies, media, f"labelprinter {kind}", best=best)
+    each = payload.get("cut", "each") != "end"          # die-cut rolls: cut every label, or once at the end
+    job = jobs.submit(labels * copies, media, f"labelprinter {kind}", best=best, each=each)
     log.info("print request from %s: %d label(s)", request.remote_addr, len(labels) * copies)
     if job["state"] != "error":
         try:
@@ -403,7 +404,7 @@ def history_reprint(hid):
         images = [render.to_print(canvas, rotated)]
     else:
         return _err(f"This label was made for {made_for.name}. Load that roll to print it again.", 409, problem="other_roll")
-    job = jobs.submit(images * e["copies"], media, "labelprinter reprint", best=request.args.get("quality") == "best")
+    job = jobs.submit(images * e["copies"], media, "labelprinter reprint", best=request.args.get("quality") == "best", each=request.args.get("cut") != "end")
     log.info("reprint %s from %s: %d label(s)", hid, request.remote_addr, len(images) * e["copies"])
     if job["state"] != "error":
         history.bump(hid)
