@@ -1,6 +1,8 @@
-# Brother QL-1100 LAN Print Server
+# Brother QL-1100 Label Website
 
-**Turn a USB-connected Brother QL-1100 into a network label printer.** This small, always-on web server runs on the Windows PC the printer is plugged into. Any phone, tablet or computer on your home network can then open **http://labelprinter.local** and print labels. Nobody needs drivers, apps or Brother's software installed.
+**A complete label-printing website for the Brother QL-1100 that replaces Brother's own P-touch software.** Design text labels, print shipping labels from a PDF or photo, and see exactly what will come out before you print, all in your browser.
+
+It runs quietly on the Windows PC the printer is plugged into and opens at **http://labelprinter.local**. Use it on that PC, or on any phone, tablet or computer on your home Wi-Fi: nothing needs installing on them, no drivers, apps or Brother software.
 
 ![Main screen](docs/screenshots/main.png)
 
@@ -9,8 +11,9 @@
 ## Features
 
 - **Live preview that matches the print exactly.** It's drawn at the printer's real 300 dpi, with the real margins.
-- **Text labels** using any font installed on the PC (the font picker shows each one in its own style), plus size, bold, italic, underline, strikethrough, alignment and line spacing. Text can run across the label or along its length. Auto-size, border and white-on-black are also available.
-- **No wasted tape.** Continuous labels are cut right after the content, down to the QL-1100's 25.4 mm minimum. Every label is cut automatically.
+- **Text labels** using any font installed on the PC (the font picker shows each one in its own style), plus size, bold, italic, underline, strikethrough, alignment and line spacing. Text can run across the label or along its length. Auto-size, a border with adjustable thickness, and white-on-black are also available.
+- **Fast or Best quality.** Fast prints noticeably quicker, exactly like Brother's own driver; Best takes extra care over every line. The print bar shows how much tape a print uses and roughly how long it will take.
+- **No wasted tape.** Continuous labels are cut right after the content, down to the QL-1100's 25 mm minimum. Every label is cut automatically.
 - **Shipping labels.** Upload a PDF or image (drag and drop or paste works too). It trims, rotates and fits the label to the roll, and you can crop to the part you want. Multi-page PDFs print one label per page.
 - **Vinted A4 sheets fixed automatically.** Vinted's InPost labels come as an A4 sheet with instructions and a cut line. The site recognises these sheets by reading the PDF's text: an A4 page that mentions InPost and has the print/cut instructions. It works whatever the file is called. It crops the sheet to just the postage label and turns it upright, rendering it from the PDF at full quality so barcodes scan.
 - **Detects the loaded roll.** It reads the printer directly over USB, so the whole site adapts to whatever DK roll is in: 12–103 mm continuous, die-cut (for example 102×152 or 62×29) and round labels.
@@ -19,7 +22,7 @@
 - **Print animation.** The label feeds out of a drawn QL-1100 at the printer's real speed.
 - **Working Feed and Cut buttons.** Click the Feed and Cut buttons on the drawn printer and they act exactly like the buttons on the real QL-1100. **Feed** pushes blank tape out without cutting (handy after loading a new roll), and you can watch it hang out of the printer. **Cut** cuts instantly with the printer's own cutter, with no printing and no wasted tape. Nothing extra is needed, because these commands are built into the printer.
 - **Works on phones.** The layout is responsive and dark-themed.
-- **Light on resources.** It uses about 70 MB of RAM, ~0% CPU when idle and about 0.1% while someone has the page open. It starts with Windows and restarts itself if it ever crashes.
+- **Light on resources.** It uses about 40 MB of RAM and almost no CPU when idle. It starts within seconds of logging in to Windows and restarts itself if it ever crashes.
 
 ## Screenshots
 
