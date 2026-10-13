@@ -1054,7 +1054,7 @@ $("#addCode").addEventListener("click", () => {
   changed();
 });
 $("#addImage").addEventListener("click", () => {
-  const b = { type: "image", src: "", size: Math.max(5, Math.round(15 * rollK())), align: "center", photo: false };
+  const b = { type: "image", src: "", size: Math.max(5, Math.round(15 * rollK())), align: "center", photo: true };
   T().blocks.push(b); renderBlocks(); changed(); pickImage(b);
 });
 
